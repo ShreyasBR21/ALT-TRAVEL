@@ -55,8 +55,8 @@
         /* Glassmorphism style */
         .glass-panel {
             background: rgba(13, 17, 28, 0.7);
-            backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
         
@@ -232,7 +232,7 @@
                 
                 <!-- Tiny search backheader -->
                 <div class="p-4 border-b border-white/5 flex items-center space-x-2 shrink-0">
-                    <button id="back-to-search" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition">
+                    <button id="back-to-search" title="Back to search" aria-label="Back to search" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition">
                         <i class="fa-solid fa-arrow-left"></i>
                     </button>
                     <div class="relative flex-1">
@@ -268,7 +268,7 @@
                                 <span>Extreme</span>
                             </div>
                             <div class="w-full bg-rose-950/80 rounded-full h-2">
-                                <div id="hotspot-load-bar" class="bg-gradient-to-r from-orange-500 to-rose-500 h-2 rounded-full shadow-lg shadow-rose-500/30" style="width: 98%"></div>
+                                <div id="hotspot-load-bar" class="bg-gradient-to-r from-orange-500 to-rose-500 h-2 rounded-full shadow-lg shadow-rose-500/30"></div>
                             </div>
                         </div>
 
@@ -281,6 +281,8 @@
                             <input 
                                 type="range" 
                                 id="time-travel-slider" 
+                                title="Time-Travel Forecast Slider"
+                                aria-label="Time-Travel Forecast Slider"
                                 min="8" 
                                 max="22" 
                                 value="12" 
@@ -405,7 +407,7 @@
                     <i class="fa-solid fa-key text-emerald-400"></i>
                     <span>Mapbox Access Token</span>
                 </h3>
-                <button id="close-settings" class="text-gray-500 hover:text-white transition">
+                <button id="close-settings" title="Close Settings" aria-label="Close Settings" class="text-gray-500 hover:text-white transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -445,7 +447,7 @@
         <div class="bg-gray-950 border-2 border-emerald-500/30 rounded-3xl max-w-sm w-full p-6 text-center space-y-6 m-4 glow-green glass-panel">
             <div class="flex justify-between items-center border-b border-white/10 pb-3">
                 <span class="text-emerald-400 font-bold text-xs uppercase tracking-widest"><i class="fa-solid fa-ticket mr-1.5"></i>Eco-Pass Issued</span>
-                <button id="close-ecopass" class="text-gray-500 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                <button id="close-ecopass" title="Close Eco-Pass" aria-label="Close Eco-Pass" class="text-gray-500 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div class="space-y-2">
@@ -502,7 +504,7 @@
                     <i class="fa-solid fa-route text-emerald-400"></i>
                     <span>Itinerary Route Balancer</span>
                 </h3>
-                <button id="close-itinerary" class="text-gray-500 hover:text-white transition">
+                <button id="close-itinerary" title="Close Itinerary" aria-label="Close Itinerary" class="text-gray-500 hover:text-white transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
@@ -539,7 +541,7 @@
         
         <!-- Auth View -->
         <div id="analytics-auth" class="flex-1 flex flex-col justify-center items-center p-8 space-y-6">
-            <button id="close-analytics-panel-auth" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <button id="close-analytics-panel-auth" title="Close Panel" aria-label="Close Panel" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-full text-emerald-400 text-3xl">
                 <i class="fa-solid fa-lock"></i>
             </div>
@@ -574,7 +576,7 @@
                     </h3>
                     <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5 font-bold">India Tourism Board Panel</p>
                 </div>
-                <button id="close-analytics-panel-dash" class="text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+                <button id="close-analytics-panel-dash" title="Close Dashboard" aria-label="Close Dashboard" class="text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
 
             <!-- Main stats scroll -->
@@ -635,15 +637,15 @@
                     <i class="fa-solid fa-bullhorn text-emerald-400"></i>
                     <span>Log Vibe Report</span>
                 </h3>
-                <button id="close-report" class="text-gray-500 hover:text-white transition">
+                <button id="close-report" title="Close Report" aria-label="Close Report" class="text-gray-500 hover:text-white transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
             
             <form id="report-form" class="space-y-4">
                 <div class="space-y-1">
-                    <label class="text-xs font-semibold text-gray-400">Target Destination</label>
-                    <select id="report-dest-select" class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium">
+                    <label for="report-dest-select" class="text-xs font-semibold text-gray-400">Target Destination</label>
+                    <select id="report-dest-select" name="report-dest-select" title="Target Destination" class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium">
                         <!-- Injected based on search suggestions -->
                     </select>
                 </div>
@@ -681,10 +683,11 @@
                 </div>
 
                 <div class="space-y-1">
-                    <label class="text-xs font-semibold text-gray-400 flex items-center gap-1"><i class="fa-solid fa-image text-emerald-400"></i> Raw Snapshot (EXIF sanitization enabled)</label>
+                    <label for="report-image-input" class="text-xs font-semibold text-gray-400 flex items-center gap-1"><i class="fa-solid fa-image text-emerald-400"></i> Raw Snapshot (EXIF sanitization enabled)</label>
                     <input 
                         type="file" 
                         id="report-image-input" 
+                        title="Upload Image Snapshot"
                         accept="image/*"
                         class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white file:bg-white/5 file:border-0 file:text-xs file:text-white file:px-2 file:py-1 file:rounded-md file:hover:bg-white/10 file:cursor-pointer"
                     >
