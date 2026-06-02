@@ -429,13 +429,20 @@ function setupEventListeners() {
 
 function showToast(message) {
     elements.toastMessage.textContent = message;
+    // Remove exit classes and add bounce-in
     elements.toast.classList.remove('translate-y-20', 'opacity-0');
     elements.toast.classList.add('translate-y-0', 'opacity-100');
+    // Apply bounceIn animation
+    elements.toast.style.animation = 'none';
+    requestAnimationFrame(() => {
+        elements.toast.style.animation = 'bounceIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both';
+    });
     
     setTimeout(() => {
         elements.toast.classList.remove('translate-y-0', 'opacity-100');
         elements.toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3000);
+        elements.toast.style.animation = '';
+    }, 3200);
 }
 
 function showLanding() {
@@ -443,7 +450,13 @@ function showLanding() {
     elements.landingView.classList.remove('hidden');
     elements.destinationInput.value = '';
     elements.resultsSearchInput.value = '';
-    searchQuery = "";
+    searchQuery = '';
+    // Re-trigger entrance animations on landing elements
+    const animEls = elements.landingView.querySelectorAll('.anim-fade-in-up');
+    animEls.forEach(el => {
+        el.style.animation = 'none';
+        requestAnimationFrame(() => { el.style.animation = ''; });
+    });
 }
 
 async function handleSearch(query, hour = 12) {
@@ -496,9 +509,11 @@ function renderResults(payload) {
         ? 'Local Heuristic Analysis Engine Active' 
         : 'Gemini AI Structured Schema Enforced';
 
-    // 3. Render Alternatives Card List
-    elements.alternativesContainer.innerHTML = alternatives.map((alt, index) => `
-        <div class="group glass-panel hover:border-emerald-500/40 hover:bg-emerald-500/5 transition duration-300 p-5 rounded-2xl glow-green cursor-pointer space-y-3" data-index="${index}">
+    // 3. Render Alternatives Card List with stagger animations
+    elements.alternativesContainer.innerHTML = alternatives.map((alt, index) => {
+        const delayClass = `delay-${Math.min(index, 5)}`;
+        return `
+        <div class="anim-fade-in-up ${delayClass} hover-lift group glass-panel border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 glow-green p-5 rounded-2xl cursor-pointer space-y-3" data-index="${index}">
             <div class="flex items-start justify-between">
                 <div>
                     <div class="inline-block px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-wider uppercase mb-1">
@@ -507,7 +522,7 @@ function renderResults(payload) {
                     <h4 class="font-outfit font-bold text-lg text-white group-hover:text-emerald-300 transition">${escapeHTML(alt.name)}</h4>
                 </div>
                 <div class="text-right">
-                    <span class="block text-emerald-400 font-extrabold text-lg">${alt.crowd_index}%</span>
+                    <span class="block text-emerald-400 font-extrabold text-lg alt-crowd-pct" data-target="${alt.crowd_index}">0%</span>
                     <span class="block text-[10px] text-gray-500 uppercase font-semibold">Crowd Index</span>
                 </div>
             </div>
@@ -523,15 +538,15 @@ function renderResults(payload) {
                 
                 <!-- Eco Pass Check-in trigger -->
                 <button 
-                    class="eco-checkin-btn px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-darkBg rounded-lg text-[10px] font-bold transition flex items-center gap-1 whitespace-nowrap"
+                    class="btn-ripple eco-checkin-btn px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-darkBg rounded-lg text-[10px] font-bold transition flex items-center gap-1 whitespace-nowrap"
                     data-dest="${escapeHTML(alt.name)}"
                 >
                     <i class="fa-solid fa-location-crosshairs"></i>
                     <span>Check-in</span>
                 </button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     // Attach card event listeners
     const cards = elements.alternativesContainer.querySelectorAll('[data-index]');
@@ -581,13 +596,33 @@ function renderResults(payload) {
     // 4. Load Field Reports feed list
     fetchAndRenderReports(hotspot.name);
 
-    // 5. Reveal Results screen
+    // 5. Reveal Results screen with slide-left effect on left panel
     elements.landingView.classList.add('hidden');
     elements.loadingView.classList.add('hidden');
     elements.resultsView.classList.remove('hidden');
+    // Apply slide-in animation to the left panel
+    const leftPanel = elements.resultsView.querySelector('.md\\:w-\\[35\\%\\]');
+    if (leftPanel) {
+        leftPanel.classList.remove('anim-slide-left');
+        requestAnimationFrame(() => leftPanel.classList.add('anim-slide-left'));
+    }
 
     // 6. Initialize Map
     initializeMapAndPins(hotspot, alternatives);
+
+    // 7. Animate crowd percentage bar and counter
+    setTimeout(() => {
+        // Animate the hotspot crowd bar
+        elements.hotspotLoadBar.classList.remove('progress-animated');
+        requestAnimationFrame(() => elements.hotspotLoadBar.classList.add('progress-animated'));
+        // Animate hotspot crowd counter up from 0
+        animateCounter(elements.hotspotCrowdPct, hotspot.crowd_index, '%');
+        // Animate alternative crowd counters
+        elements.alternativesContainer.querySelectorAll('.alt-crowd-pct').forEach(el => {
+            const target = parseInt(el.getAttribute('data-target'), 10);
+            animateCounter(el, target, '%');
+        });
+    }, 120);
 
     // Smart Search: If direct alternative match is found, automatically fly to it and open popup
     if (payload.analysis && payload.analysis.direct_alternative_match) {
@@ -1076,7 +1111,7 @@ async function unlockB2BDashboard() {
                         <span class="text-emerald-400 font-bold">${count} visits</span>
                     </div>
                     <div class="w-full bg-slate-900 rounded-full h-1.5">
-                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
+                        <div class="bar-grow bg-emerald-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
                     </div>
                 </div>
             `;
@@ -1137,7 +1172,7 @@ async function unlockB2BDashboardWithToken(token) {
                         <span>${count}</span>
                     </div>
                     <div class="w-full bg-slate-900 rounded-full h-1.5">
-                        <div class="bg-rose-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
+                        <div class="bar-grow bg-rose-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
                     </div>
                 </div>
             `;
@@ -1291,4 +1326,33 @@ function escapeHTML(str) {
             '"': '&quot;'
         }[tag] || tag)
     );
+}
+
+/**
+ * Animate a numeric counter from 0 to the target value.
+ * @param {HTMLElement} el - Element whose textContent will be updated
+ * @param {number} target  - Final numeric value
+ * @param {string} suffix  - Suffix appended to number (e.g. '%')
+ * @param {number} duration - Duration in ms (default 900)
+ */
+function animateCounter(el, target, suffix = '', duration = 900) {
+    if (!el || isNaN(target)) return;
+    // Respect prefers-reduced-motion
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+        el.textContent = `${target}${suffix}`;
+        return;
+    }
+    const start = performance.now();
+    const from = 0;
+    function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease-out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(from + (target - from) * eased);
+        el.textContent = `${current}${suffix}`;
+        if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
 }
