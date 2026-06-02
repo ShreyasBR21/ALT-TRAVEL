@@ -227,7 +227,7 @@ function setupEventListeners() {
                 fetchAndRenderReports(currentHotspot.name);
             }
         } catch (error) {
-            alert(`Login Failed: ${error.message}`);
+            showCustomAlert(`Login Failed: ${error.message}`);
         }
     });
 
@@ -403,7 +403,7 @@ function setupEventListeners() {
     // Field reports modal
     elements.openReportForm.addEventListener('click', () => {
         if (!currentUser) {
-            alert("Please Sign In as a Traveler to submit a field report.");
+            showCustomAlert("Please Sign In as a Traveler to submit a field report.");
             elements.loginModal.classList.remove('hidden');
             return;
         }
@@ -474,12 +474,12 @@ async function handleSearch(query, hour = 12) {
         if (data.success) {
             renderResults(data);
         } else {
-            alert('Failure: Swapping failed to compile suggestions.');
+            showCustomAlert('Failure: Swapping failed to compile suggestions.');
             elements.loadingView.classList.add('hidden');
         }
     } catch (error) {
         console.error('Fetch Error:', error);
-        alert(`Failed to speak to the backend server. Make sure FastAPI is running on ${BACKEND_URL}.\nError: ${error.message}`);
+        showCustomAlert(`Failed to speak to the backend server. Make sure FastAPI is running on ${BACKEND_URL}.\nError: ${error.message}`);
         elements.loadingView.classList.add('hidden');
     }
 }
@@ -779,7 +779,7 @@ function triggerEcoPassCheckin(destinationName) {
     showToast(`Requesting browser GPS check-in at ${destinationName}...`);
     
     if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
+        showCustomAlert("Geolocation is not supported by your browser.");
         return;
     }
 
@@ -848,11 +848,11 @@ async function sendVerificationPayload(destinationName, lat, lng) {
             elements.ecopassModal.classList.remove('hidden');
             showToast("Eco-Pass geofence check-in successful!");
         } else {
-            alert(`Check-in verification failed:\n${data.message}`);
+            showCustomAlert(`Check-in verification failed:\n${data.message}`);
         }
     } catch (e) {
         console.error(e);
-        alert(`Error communicating with check-in endpoint: ${e.message}`);
+        showCustomAlert(`Error communicating with check-in endpoint: ${e.message}`);
     }
 }
 
@@ -921,14 +921,14 @@ async function runItineraryOptimization() {
         if (data.balanced) {
             itineraryData = data.days;
             renderItineraryItems();
-            alert(`Itinerary Balanced! Details:\n${data.details}`);
+            showCustomAlert(`Itinerary Balanced! Details:\n${data.details}`);
             showToast("Trip balanced. Alternatives routed!");
         } else {
-            alert(`Itinerary check complete: ${data.details}`);
+            showCustomAlert(`Itinerary check complete: ${data.details}`);
         }
     } catch (e) {
         console.error(e);
-        alert(`Failed to contact optimizer: ${e.message}`);
+        showCustomAlert(`Failed to contact optimizer: ${e.message}`);
     }
 }
 
@@ -1046,7 +1046,7 @@ async function handleReportSubmission(e) {
         }
     } catch (error) {
         console.error(error);
-        alert(`Failed to submit report: ${error.message}`);
+        showCustomAlert(`Failed to submit report: ${error.message}`);
     }
 }
 
@@ -1064,7 +1064,7 @@ function convertFileToBase64(file) {
 async function unlockB2BDashboard() {
     const key = elements.analyticsPasskey.value.trim();
     if (!key) {
-        alert("Please enter a passcode key.");
+        showCustomAlert("Please enter a passcode key.");
         return;
     }
 
@@ -1124,7 +1124,7 @@ async function unlockB2BDashboard() {
 
     } catch (e) {
         console.error(e);
-        alert(`B2B Authentication failed: ${e.message}\nEnsure the passcode is correct.`);
+        showCustomAlert(`B2B Authentication failed: ${e.message}\nEnsure the passcode is correct.`);
     }
 }
 
@@ -1227,7 +1227,7 @@ async function deleteVibeReport(reportId) {
             fetchAndRenderReports(currentHotspot.name);
         }
     } catch (error) {
-        alert(`Moderation Error: ${error.message}`);
+        showCustomAlert(`Moderation Error: ${error.message}`);
     }
 }
 
@@ -1355,4 +1355,45 @@ function animateCounter(el, target, suffix = '', duration = 900) {
         if (progress < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
+}
+
+
+// ================= CUSTOM ALERT MODAL =================
+function showCustomAlert(message, title = 'Notification') {
+    const alertModal = document.getElementById('custom-alert-modal');
+    const alertBox = document.getElementById('custom-alert-box');
+    const titleEl = document.getElementById('custom-alert-title');
+    const msgEl = document.getElementById('custom-alert-message');
+    const closeBtn = document.getElementById('custom-alert-close');
+    
+    if (!alertModal) return; // Fallback if HTML not injected
+    
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    
+    // Show modal
+    alertModal.classList.remove('hidden');
+    // Trigger transition
+    requestAnimationFrame(() => {
+        alertModal.classList.remove('opacity-0');
+        alertModal.classList.add('opacity-100');
+        alertBox.classList.remove('scale-95');
+        alertBox.classList.add('scale-100');
+    });
+    
+    // Close handler
+    const closeHandler = () => {
+        alertModal.classList.remove('opacity-100');
+        alertModal.classList.add('opacity-0');
+        alertBox.classList.remove('scale-100');
+        alertBox.classList.add('scale-95');
+        
+        setTimeout(() => {
+            alertModal.classList.add('hidden');
+        }, 300); // Wait for transition
+        
+        closeBtn.removeEventListener('click', closeHandler);
+    };
+    
+    closeBtn.addEventListener('click', closeHandler);
 }
