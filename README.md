@@ -80,6 +80,15 @@ The backend server runs on Python 3.10+.
 
    The backend server will launch on `http://127.0.0.1:8000`. You can inspect the interactive API documentation at `http://127.0.0.1:8000/docs`.
 
+## 🔗 Live Demo
+
+Try the deployed instances:
+
+- **Frontend (Vercel):** https://alt-travel-652a0whu7-shreyas-b-r-s-projects.vercel.app/
+- **Backend (Render):** https://alt-travel.onrender.com
+
+If you want the frontend to point to a different backend, set the `REACT_APP_BACKEND_URL` environment variable in your Vercel project settings and redeploy.
+
 ## Continuous Integration
 
 A GitHub Actions workflow has been added in `.github/workflows/python-ci.yml` to validate backend Python syntax on pushes and pull requests to `main`.
