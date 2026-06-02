@@ -1,6 +1,14 @@
 from typing import List, Optional
 
-from pydantic import BaseSettings, Field, validator
+# Try to import BaseSettings from the pydantic-settings package (pydantic v2+),
+# but fall back to the older location for compatibility with environments
+# that still install pydantic<2 or have different packaging.
+try:
+    from pydantic_settings import BaseSettings
+except Exception:
+    from pydantic import BaseSettings  # type: ignore
+
+from pydantic import Field, validator
 
 
 class Settings(BaseSettings):
