@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AltTravel - SaaS Route Balancer</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mapbox GL JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        outfit: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#080a0f',
+                        panelBg: 'rgba(15, 20, 35, 0.65)',
+                        glassBorder: 'rgba(255, 255, 255, 0.08)',
+                        brandTeal: '#10b981',
+                        brandRose: '#f43f5e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(8, 10, 15, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Glassmorphism style */
+        .glass-panel {
+            background: rgba(13, 17, 28, 0.7);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glow-green {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.12);
+        }
+        
+        .glow-red {
+            box-shadow: 0 0 25px rgba(244, 63, 94, 0.12);
+        }
+
+        /* Custom flashing animation for hotspot crowd index */
+        @keyframes pulse-danger {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(0.97); }
+        }
+        .pulse-danger {
+            animation: pulse-danger 2s infinite ease-in-out;
+        }
+
+        /* Mapbox popup stylings */
+        .mapboxgl-popup-content {
+            background: #0d111c !important;
+            color: #f3f4f6 !important;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px !important;
+            padding: 14px !important;
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
+        }
+        .mapboxgl-popup-tip {
+            border-top-color: #0d111c !important;
+            border-bottom-color: #0d111c !important;
+        }
+        
+        /* Custom range slider thumb styling */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #10b981;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-gray-100 font-sans h-full overflow-hidden flex flex-col relative select-none">
+    
+    <!-- Background Decorative Orbs -->
+    <div class="absolute top-[-10%] left-[-10%] w-[55%] h-[55%] rounded-full bg-emerald-950/10 blur-[130px] pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[55%] h-[55%] rounded-full bg-rose-950/10 blur-[130px] pointer-events-none"></div>
+    
+    <!-- Top Navigation Header -->
+    <header class="w-full px-6 py-4 flex items-center justify-between border-b border-white/5 z-40 glass-panel">
+        <div class="flex items-center space-x-3 cursor-pointer" id="nav-logo">
+            <div class="bg-gradient-to-tr from-emerald-400 to-teal-600 p-2 rounded-xl text-darkBg">
+                <i class="fa-solid fa-map-location-dot text-lg font-bold"></i>
+            </div>
+            <span class="font-outfit font-extrabold text-2xl tracking-tight bg-gradient-to-r from-white via-gray-200 to-emerald-400 bg-clip-text text-transparent">
+                AltTravel
+            </span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <!-- Itinerary Button -->
+            <button id="toggle-itinerary" class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-emerald-500/10 hover:border-emerald-500/30 transition flex items-center space-x-2 text-xs font-semibold">
+                <i class="fa-solid fa-route"></i>
+                <span>Trip Planner</span>
+            </button>
+            <!-- B2B Dashboard Button -->
+            <button id="toggle-analytics" class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-300 hover:text-white hover:bg-emerald-500/10 hover:border-emerald-500/30 transition flex items-center space-x-2 text-xs font-semibold">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>B2B Board</span>
+            </button>
+            <!-- Mapbox Key Config trigger -->
+            <button id="toggle-settings" class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center space-x-1.5 text-xs">
+                <i class="fa-solid fa-gears"></i>
+                <span>Token</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 w-full relative flex flex-col overflow-hidden">
+        
+        <!-- ================= LANDING STATE ================= -->
+        <section id="landing-view" class="flex-1 flex flex-col items-center justify-center px-4 relative z-30 transition-all duration-500 ease-in-out">
+            <div class="max-w-2xl w-full text-center space-y-8">
+                <!-- Badging -->
+                <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold tracking-wider uppercase mx-auto animate-pulse">
+                    <span class="flex h-2 w-2 relative">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>Sustainable Tourism SaaS Platform</span>
+                </div>
+                
+                <!-- Main Header -->
+                <div class="space-y-4">
+                    <h1 class="text-5xl md:text-6xl font-outfit font-black tracking-tight leading-tight">
+                        Predictive Routing. <br>
+                        <span class="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 bg-clip-text text-transparent">
+                            Uncrowd Your Adventures.
+                        </span>
+                    </h1>
+                    <p class="text-gray-400 text-lg md:text-xl font-normal max-w-lg mx-auto leading-relaxed">
+                        Swap crowded tourist traps for local gems. Use predictive forecasting, log real-time vibe updates, and unlock rewards.
+                    </p>
+                </div>
+
+                <!-- Searching Hub Card -->
+                <div class="glass-panel p-6 rounded-2xl glow-green border-white/10 max-w-xl mx-auto">
+                    <form id="search-form" class="flex flex-col sm:flex-row items-center gap-3">
+                        <div class="relative w-full">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                            <input 
+                                type="text" 
+                                id="destination-input"
+                                placeholder="Where are you planning to go? (e.g., Taj Mahal)" 
+                                class="w-full bg-slate-900/80 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition font-medium"
+                                required
+                                autocomplete="off"
+                            >
+                        </div>
+                        <button 
+                            type="submit" 
+                            id="search-btn"
+                            class="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 text-darkBg font-bold font-outfit px-6 py-3.5 rounded-xl hover:from-emerald-400 hover:to-teal-500 active:scale-95 transition shadow-lg shadow-emerald-950/20 whitespace-nowrap"
+                        >
+                            <span>Find Alternatives</span>
+                            <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </form>
+                    
+                    <!-- Suggestions -->
+                    <div class="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-gray-400">
+                        <span>Trap Swaps:</span>
+                        <button class="pill-suggestion px-3 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-emerald-300 transition" data-val="Taj Mahal">
+                            Taj Mahal
+                        </button>
+                        <button class="pill-suggestion px-3 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-emerald-300 transition" data-val="Manali">
+                            Manali
+                        </button>
+                        <button class="pill-suggestion px-3 py-1 rounded-lg bg-white/5 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-emerald-300 transition" data-val="Goa">
+                            Goa
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= LOADING STATE ================= -->
+        <div id="loading-view" class="absolute inset-0 bg-darkBg/90 z-50 flex flex-col items-center justify-center hidden">
+            <div class="relative flex items-center justify-center">
+                <div class="w-20 h-20 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+                <div class="absolute text-emerald-400 text-2xl animate-pulse">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+            </div>
+            <h3 class="text-xl font-outfit font-semibold mt-6 text-white">Analyzing Traps</h3>
+            <p class="text-gray-400 text-sm mt-2 max-w-xs text-center font-light">Retrieving crowd predictions, checking geolocation offsets, and formatting alternatives...</p>
+        </div>
+
+        <!-- ================= RESULTS STATE (SPLIT WINDOW) ================= -->
+        <section id="results-view" class="flex-1 w-full h-full flex flex-col md:flex-row hidden transition-all duration-500 ease-in-out relative z-30">
+            
+            <!-- Left Column: Viral Hotspot Danger Area & Vibe Reports -->
+            <div class="w-full md:w-[35%] border-r border-white/10 flex flex-col h-full bg-slate-950/45 overflow-y-auto">
+                
+                <!-- Tiny search backheader -->
+                <div class="p-4 border-b border-white/5 flex items-center space-x-2 shrink-0">
+                    <button id="back-to-search" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="relative flex-1">
+                        <input 
+                            type="text" 
+                            id="results-search-input"
+                            class="w-full bg-slate-900 border border-white/10 rounded-lg py-1.5 pl-8 pr-3 text-sm text-white focus:outline-none focus:border-emerald-500"
+                            placeholder="Search another trap..."
+                        >
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Main Scroll content -->
+                <div class="p-6 space-y-6 flex-1">
+                    <!-- Danger Indicator Flag -->
+                    <div class="glass-panel p-5 rounded-2xl border-rose-500/20 bg-rose-950/15 glow-red pulse-danger space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-bold tracking-wider uppercase border border-rose-500/30 flex items-center gap-1.5">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span id="hotspot-danger-label">CRITICALLY CONGESTED</span>
+                            </span>
+                            <div class="flex items-center space-x-1 text-rose-400 font-extrabold text-sm">
+                                <i class="fa-solid fa-people-group"></i>
+                                <span id="hotspot-crowd-pct">98%</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress slider -->
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs font-semibold text-rose-300">
+                                <span>Overtourism Load</span>
+                                <span>Extreme</span>
+                            </div>
+                            <div class="w-full bg-rose-950/80 rounded-full h-2">
+                                <div id="hotspot-load-bar" class="bg-gradient-to-r from-orange-500 to-rose-500 h-2 rounded-full shadow-lg shadow-rose-500/30" style="width: 98%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Time-Travel Forecast Slider Integration -->
+                        <div class="mt-4 pt-3 border-t border-white/5 space-y-2">
+                            <div class="flex justify-between text-xs font-semibold text-gray-400">
+                                <span class="flex items-center gap-1"><i class="fa-solid fa-clock text-emerald-400"></i> Time-Travel Slider</span>
+                                <span id="forecast-time-label" class="text-emerald-400 font-bold">12:00 PM</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                id="time-travel-slider" 
+                                min="8" 
+                                max="22" 
+                                value="12" 
+                                class="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                            >
+                            <div class="flex justify-between text-[10px] text-gray-500 font-medium">
+                                <span>08:00 AM (Quiet)</span>
+                                <span>02:00 PM (Peak)</span>
+                                <span>10:00 PM (Quiet)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hotspot Identity -->
+                    <div class="space-y-3">
+                        <div class="text-xs uppercase font-bold tracking-widest text-rose-500/90">Avoid Hotspot Trap</div>
+                        <h2 id="hotspot-name" class="text-3xl font-outfit font-black tracking-tight text-white leading-none">Venice, Italy</h2>
+                        <p id="hotspot-desc" class="text-gray-400 text-sm leading-relaxed">
+                            Venice suffers from extreme overcrowding, leading to entry fees and damage to its fragile lagoon.
+                        </p>
+                    </div>
+
+                    <hr class="border-white/5">
+
+                    <!-- AI Aesthetic Breakdown -->
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-2 text-emerald-400">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <h3 class="font-outfit font-bold text-sm tracking-wider uppercase">Gemini Vibe Analysis</h3>
+                        </div>
+                        <p id="ai-vibe-text" class="text-gray-300 text-sm italic font-light leading-relaxed border-l-2 border-emerald-500/40 pl-3">
+                            "Vibrant and romantic historical waterways flanked by grand Renaissance facades, stone bridges, and iconic gondolas."
+                        </p>
+                        
+                        <div class="space-y-2">
+                            <h4 class="text-xs text-gray-500 font-bold uppercase tracking-wider">Aesthetic Traits Identified</h4>
+                            <div id="ai-traits-list" class="flex flex-wrap gap-2">
+                                <span class="px-2.5 py-1 rounded-md bg-white/5 border border-white/15 text-xs text-gray-300">Canals</span>
+                                <span class="px-2.5 py-1 rounded-md bg-white/5 border border-white/15 text-xs text-gray-300">Renaissance Architecture</span>
+                            </div>
+                        </div>
+
+                        <!-- AI Status badge -->
+                        <div class="flex items-center space-x-1.5 text-[10px] text-gray-500">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span id="ai-engine-status">Gemini 3.5 Flash Schema Enforced</span>
+                        </div>
+                    </div>
+
+                    <hr class="border-white/5">
+
+                    <!-- Authentic Vibe reports pipeline section -->
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2 text-emerald-400">
+                                <i class="fa-solid fa-camera-retro"></i>
+                                <h3 class="font-outfit font-bold text-sm tracking-wider uppercase">Field Reports Feed</h3>
+                            </div>
+                            <button id="open-report-form" class="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-bold hover:bg-emerald-500/25 transition">
+                                <i class="fa-solid fa-plus mr-1"></i>Report Vibe
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-gray-500">Raw objective congestion data logged directly by travelers in the field. Photos are stripped of EXIF tags.</p>
+                        
+                        <!-- List reports -->
+                        <div id="reports-feed-container" class="space-y-3">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Right Column: 2 Alternative Cards + Mapbox Canvas -->
+            <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+                
+                <!-- Alternatives Card Shelf (Top Half/Layer) -->
+                <div class="p-6 border-b border-white/10 bg-slate-900/40 z-10 space-y-4 shrink-0">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-outfit font-extrabold text-lg flex items-center space-x-2">
+                            <span class="text-emerald-400"><i class="fa-solid fa-leaf"></i></span>
+                            <span>Recommended Low-Crowd Swaps</span>
+                        </h3>
+                        <span class="text-xs text-gray-400">Click a card to fly mapping viewport</span>
+                    </div>
+
+                    <!-- Cards Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="alternatives-container">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Map Container (Bottom Half/Layer) -->
+                <div class="flex-1 w-full relative">
+                    <div id="map" class="w-full h-full bg-slate-950"></div>
+                    
+                    <!-- Floating Map Legend overlay -->
+                    <div class="absolute bottom-4 left-4 bg-gray-900/90 border border-white/10 rounded-xl p-3 text-xs shadow-lg space-y-1.5 z-10">
+                        <div class="font-bold text-white mb-1">Map Legend</div>
+                        <div class="flex items-center space-x-2">
+                            <span class="h-3 w-3 rounded-full bg-rose-500 inline-block"></span>
+                            <span class="text-gray-300">Congested Hotspot</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="h-3 w-3 rounded-full bg-emerald-500 inline-block"></span>
+                            <span class="text-gray-300">Under-visited Alternatives</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ================= SETTINGS / MAP TOKEN MODAL ================= -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-gray-900 border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 m-4 glass-panel">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="font-outfit font-bold text-xl text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-key text-emerald-400"></i>
+                    <span>Mapbox Access Token</span>
+                </h3>
+                <button id="close-settings" class="text-gray-500 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-400 leading-relaxed">
+                By default, AltTravel uses a public read-only Mapbox access token. Paste your personal Mapbox token below to load custom styles.
+            </p>
+
+            <div class="space-y-1">
+                <label for="mapbox-token-input" class="text-xs font-semibold text-gray-400">Mapbox Token String</label>
+                <input 
+                    type="password" 
+                    id="mapbox-token-input"
+                    class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                    placeholder="pk.eyJ1Ijo..."
+                >
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+                <button id="reset-token-btn" class="text-xs text-rose-400 hover:underline">
+                    Reset to Default
+                </button>
+                <div class="flex space-x-2">
+                    <button id="cancel-token-btn" class="px-4 py-2 text-xs font-semibold text-gray-400 hover:text-white transition">
+                        Cancel
+                    </button>
+                    <button id="save-token-btn" class="px-4 py-2 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-darkBg rounded-lg transition font-bold">
+                        Save Token
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ECO-PASS QR CODE MODAL ================= -->
+    <div id="ecopass-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
+        <div class="bg-gray-950 border-2 border-emerald-500/30 rounded-3xl max-w-sm w-full p-6 text-center space-y-6 m-4 glow-green glass-panel">
+            <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                <span class="text-emerald-400 font-bold text-xs uppercase tracking-widest"><i class="fa-solid fa-ticket mr-1.5"></i>Eco-Pass Issued</span>
+                <button id="close-ecopass" class="text-gray-500 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="space-y-2">
+                <h4 class="text-xl font-outfit font-black text-white" id="ecopass-reward-name">MATCH TEA & SWEETS</h4>
+                <p class="text-xs text-emerald-300 font-medium" id="ecopass-dest-name">Verified at Kanazawa, Japan</p>
+            </div>
+
+            <!-- Custom Mock QR Code Render -->
+            <div class="w-48 h-48 bg-white p-3 rounded-2xl mx-auto flex flex-col justify-between border-4 border-emerald-500 shadow-xl shadow-emerald-950/20 relative group">
+                <div class="flex-1 grid grid-cols-4 grid-rows-4 gap-1 p-1 bg-white">
+                    <!-- Standard QR corner patterns -->
+                    <div class="bg-slate-900 border-2 border-slate-900 rounded-sm"></div>
+                    <div class="bg-slate-900 border-2 border-slate-900 rounded-sm"></div>
+                    <div class="bg-white"></div>
+                    <div class="bg-slate-900 border-2 border-slate-900 rounded-sm"></div>
+                    
+                    <div class="bg-slate-900"></div>
+                    <div class="bg-white"></div>
+                    <div class="bg-slate-900"></div>
+                    <div class="bg-white"></div>
+                    
+                    <div class="bg-white"></div>
+                    <div class="bg-slate-900"></div>
+                    <div class="bg-white"></div>
+                    <div class="bg-slate-900"></div>
+                    
+                    <div class="bg-slate-900 border-2 border-slate-900 rounded-sm"></div>
+                    <div class="bg-white"></div>
+                    <div class="bg-slate-900"></div>
+                    <div class="bg-slate-900"></div>
+                </div>
+                <div class="absolute inset-0 bg-white/95 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <i class="fa-solid fa-shield-halved text-emerald-500 text-3xl mb-1"></i>
+                    <span class="block text-[8px] font-mono text-gray-800 font-bold uppercase mt-1" id="ecopass-code">ECO-PASS-8321</span>
+                </div>
+                <div class="text-[9px] font-mono text-gray-800 font-bold tracking-wide mt-1" id="ecopass-code-label">ECO-PASS-8321</div>
+            </div>
+
+            <p class="text-xs text-gray-400 leading-relaxed px-2">
+                Present this verified voucher QR pass code at partner family-owned locations or local transit bureaus to claim your benefits. Thank you for combatting overtourism!
+            </p>
+
+            <button id="claim-ecopass-btn" class="w-full bg-emerald-500 hover:bg-emerald-400 text-darkBg font-bold py-2.5 rounded-xl transition text-sm">
+                Claim Reward
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= TRIP PLANNER MODAL ================= -->
+    <div id="itinerary-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-gray-900 border border-white/10 rounded-2xl max-w-lg w-full p-6 space-y-4 m-4 glass-panel flex flex-col max-h-[90%]">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+                <h3 class="font-outfit font-bold text-xl text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-route text-emerald-400"></i>
+                    <span>Itinerary Route Balancer</span>
+                </h3>
+                <button id="close-itinerary" class="text-gray-500 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-400 leading-relaxed">
+                Add travel destinations to your trip. If you schedule consecutive overcrowded viral spots back-to-back, our routing solver will flag it and let you balance it instantly.
+            </p>
+
+            <!-- Itinerary Items list -->
+            <div class="flex-1 overflow-y-auto space-y-3 py-2 pr-1" id="itinerary-list-container">
+                <!-- Days items will render here -->
+            </div>
+
+            <!-- Action buttons -->
+            <div class="pt-3 border-t border-white/10 flex justify-between items-center shrink-0">
+                <button id="add-day-btn" class="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg text-xs font-bold transition">
+                    <i class="fa-solid fa-plus mr-1.5"></i>Add Trip Day
+                </button>
+                <div class="flex space-x-2">
+                    <button id="reset-itinerary-btn" class="px-3 py-2 text-xs font-semibold text-rose-400 hover:underline">
+                        Clear Route
+                    </button>
+                    <button id="balance-itinerary-btn" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-darkBg font-bold rounded-lg text-xs transition flex items-center space-x-1.5 shadow-lg shadow-emerald-950/20">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>1-Click Balance</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= B2B ANALYTICS PANEL (SLIDE OUT) ================= -->
+    <div id="analytics-panel" class="fixed inset-y-0 right-0 max-w-md w-full bg-slate-950 border-l border-white/10 z-50 flex flex-col shadow-2xl transition-all duration-300 translate-x-full">
+        
+        <!-- Auth View -->
+        <div id="analytics-auth" class="flex-1 flex flex-col justify-center items-center p-8 space-y-6">
+            <button id="close-analytics-panel-auth" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-full text-emerald-400 text-3xl">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div class="text-center space-y-2">
+                <h4 class="font-outfit font-bold text-xl text-white">Tourism Board Access</h4>
+                <p class="text-xs text-gray-500 max-w-xs leading-relaxed">Enter your password key to review deflection analytics, redirected passenger logs, and regional economic returns.</p>
+            </div>
+            <div class="w-full space-y-4">
+                <input 
+                    type="password" 
+                    id="analytics-passkey" 
+                    class="w-full bg-slate-900 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-emerald-500 text-center font-mono"
+                    placeholder="Enter board passcode..."
+                >
+                <button id="submit-analytics-auth" class="w-full bg-emerald-500 hover:bg-emerald-400 text-darkBg font-bold py-3 rounded-xl transition font-outfit text-sm">
+                    Unlock Dashboard
+                </button>
+                <div class="text-center">
+                    <span class="text-[10px] text-gray-600">Demo Key: <code class="bg-white/5 px-1 py-0.5 rounded text-gray-400">alt-travel-admin-pass-2026</code></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard metrics view -->
+        <div id="analytics-dashboard" class="flex-1 flex flex-col h-full overflow-hidden hidden">
+            <!-- Header -->
+            <div class="p-6 border-b border-white/10 flex items-center justify-between shrink-0">
+                <div>
+                    <h3 class="font-outfit font-extrabold text-xl text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                        <span>Redirection metrics</span>
+                    </h3>
+                    <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-0.5 font-bold">India Tourism Board Panel</p>
+                </div>
+                <button id="close-analytics-panel-dash" class="text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <!-- Main stats scroll -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Deflection Rate Overview -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="glass-panel p-4 rounded-xl border-white/5 bg-white/5 space-y-1">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold">Total Redirects</span>
+                        <span class="block text-2xl font-outfit font-black text-white" id="stat-redirects">154</span>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl border-white/5 bg-white/5 space-y-1">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold">Deflection Rate</span>
+                        <span class="block text-2xl font-outfit font-black text-emerald-400" id="stat-rate">31.9%</span>
+                    </div>
+                </div>
+
+                <!-- Verified checkins -->
+                <div class="glass-panel p-4 rounded-xl border-emerald-500/10 bg-emerald-950/5 flex items-center justify-between">
+                    <div class="space-y-0.5">
+                        <span class="text-[10px] text-gray-500 uppercase font-bold">Eco-Passes Claimed</span>
+                        <span class="block text-xl font-bold text-white" id="stat-claims">32 check-ins</span>
+                    </div>
+                    <div class="text-emerald-400 text-2xl"><i class="fa-solid fa-ticket"></i></div>
+                </div>
+
+                <!-- Hotspots Demand deflection breakdown -->
+                <div class="space-y-3">
+                    <h4 class="text-xs text-gray-400 font-bold uppercase tracking-wider">Deflected Hotspot Pressure</h4>
+                    <div class="space-y-3" id="analytics-hotspots-bars">
+                        <!-- Venice, Kyoto, Santorini bars inject -->
+                    </div>
+                </div>
+
+                <hr class="border-white/5">
+
+                <!-- Alternative economics gains breakdown -->
+                <div class="space-y-3">
+                    <h4 class="text-xs text-gray-400 font-bold uppercase tracking-wider">Alternative Destination Visits</h4>
+                    <div class="space-y-3" id="analytics-alternatives-bars">
+                        <!-- Chioggia, etc. progress bars inject -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logout footer -->
+            <div class="p-4 border-t border-white/10 bg-slate-900/60 shrink-0 text-center">
+                <button id="logout-analytics-btn" class="text-xs text-rose-400 font-bold hover:underline"><i class="fa-solid fa-lock-open mr-1"></i> Lock Analytics Panel</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ================= FIELD REPORT SUBMIT FORM MODAL ================= -->
+    <div id="report-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-gray-900 border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 m-4 glass-panel">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="font-outfit font-bold text-xl text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-bullhorn text-emerald-400"></i>
+                    <span>Log Vibe Report</span>
+                </h3>
+                <button id="close-report" class="text-gray-500 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="report-form" class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-gray-400">Target Destination</label>
+                    <select id="report-dest-select" class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-medium">
+                        <!-- Injected based on search suggestions -->
+                    </select>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-gray-400">Crowd Level Rating</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="border border-white/10 bg-slate-950/60 p-2.5 rounded-lg text-center cursor-pointer flex flex-col items-center justify-center hover:border-emerald-500/30">
+                            <input type="radio" name="congestion_rating" value="Quiet" checked class="sr-only">
+                            <span class="text-emerald-400 text-xs font-bold">Quiet</span>
+                            <span class="text-[9px] text-gray-500">Uncrowded</span>
+                        </label>
+                        <label class="border border-white/10 bg-slate-950/60 p-2.5 rounded-lg text-center cursor-pointer flex flex-col items-center justify-center hover:border-amber-500/30">
+                            <input type="radio" name="congestion_rating" value="Moderate" class="sr-only">
+                            <span class="text-amber-400 text-xs font-bold">Moderate</span>
+                            <span class="text-[9px] text-gray-500">Medium</span>
+                        </label>
+                        <label class="border border-white/10 bg-slate-950/60 p-2.5 rounded-lg text-center cursor-pointer flex flex-col items-center justify-center hover:border-rose-500/30">
+                            <input type="radio" name="congestion_rating" value="Heavy" class="sr-only">
+                            <span class="text-rose-400 text-xs font-bold">Heavy</span>
+                            <span class="text-[9px] text-gray-500">Congested</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-gray-400">Report details (Objective & Anti-Social)</label>
+                    <textarea 
+                        id="report-text-input" 
+                        rows="3" 
+                        class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+                        placeholder="Write down brief observations about walkways, queues, restaurants or scenery. Photos must be raw snapshots."
+                        required
+                    ></textarea>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-gray-400 flex items-center gap-1"><i class="fa-solid fa-image text-emerald-400"></i> Raw Snapshot (EXIF sanitization enabled)</label>
+                    <input 
+                        type="file" 
+                        id="report-image-input" 
+                        accept="image/*"
+                        class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white file:bg-white/5 file:border-0 file:text-xs file:text-white file:px-2 file:py-1 file:rounded-md file:hover:bg-white/10 file:cursor-pointer"
+                    >
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-darkBg font-bold py-2.5 rounded-xl transition text-sm">
+                    Submit Field Report
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-900 border border-emerald-500/30 text-emerald-300 text-xs px-4 py-3 rounded-xl shadow-xl z-50 flex items-center space-x-2 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-message">Map settings updated!</span>
+    </div>
+
+    <!-- Frontend decoupled app.js -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
