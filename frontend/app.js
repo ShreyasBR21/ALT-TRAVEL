@@ -281,12 +281,20 @@ function setupEventListeners() {
         showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
     });
 
+    elements.destinationInput.addEventListener('keydown', (e) => {
+        navigateSuggestions(e, elements.landingAutosuggest, elements.destinationInput);
+    });
+
     elements.resultsSearchInput.addEventListener('input', (e) => {
         showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
     });
 
     elements.resultsSearchInput.addEventListener('focus', (e) => {
         showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
+    });
+
+    elements.resultsSearchInput.addEventListener('keydown', (e) => {
+        navigateSuggestions(e, elements.resultsAutosuggest, elements.resultsSearchInput);
     });
 
     // Close autosuggest lists when clicking outside
@@ -1254,14 +1262,17 @@ async function deleteVibeReport(reportId) {
 // Smart Search: Autosuggest rendering
 function showSuggestions(val, suggestBox, inputEl) {
     const cleanVal = val.trim().toLowerCase();
-    if (!cleanVal) {
-        suggestBox.classList.add('hidden');
-        return;
-    }
+    let matches = [];
 
-    const matches = SMART_SEARCH_DATABASE.filter(place => 
-        place.toLowerCase().includes(cleanVal)
-    );
+    if (cleanVal) {
+        // Prioritize exact prefix matches, then contains matches
+        const prefixMatches = SMART_SEARCH_DATABASE.filter(place => place.toLowerCase().startsWith(cleanVal));
+        const substringMatches = SMART_SEARCH_DATABASE.filter(place => !place.toLowerCase().startsWith(cleanVal) && place.toLowerCase().includes(cleanVal));
+        matches = [...new Set([...prefixMatches, ...substringMatches])];
+    } else {
+        // Show recent search shortcuts when input is empty
+        matches = recentSearches.slice(0, 4);
+    }
 
     if (matches.length === 0) {
         suggestBox.classList.add('hidden');
@@ -1269,14 +1280,14 @@ function showSuggestions(val, suggestBox, inputEl) {
     }
 
     suggestBox.innerHTML = matches.map(place => `
-        <button class="w-full text-left px-2.5 py-1.5 rounded-lg text-white hover:bg-emerald-500/10 hover:text-emerald-300 transition truncate border border-transparent hover:border-emerald-500/20 font-medium">
+        <button class="suggestion-item w-full text-left px-2.5 py-1.5 rounded-lg text-white hover:bg-emerald-500/10 hover:text-emerald-300 transition truncate border border-transparent hover:border-emerald-500/20 font-medium">
             <i class="fa-solid fa-location-dot text-emerald-400 mr-1.5"></i>${escapeHTML(place)}
         </button>
     `).join('');
 
     suggestBox.classList.remove('hidden');
+    resetSuggestionHighlight(suggestBox);
 
-    // Attach click triggers to suggestions
     const btns = suggestBox.querySelectorAll('button');
     btns.forEach((btn, idx) => {
         btn.addEventListener('click', (e) => {
@@ -1289,6 +1300,39 @@ function showSuggestions(val, suggestBox, inputEl) {
             addRecentSearch(selected);
         });
     });
+}
+
+function resetSuggestionHighlight(suggestBox) {
+    const items = suggestBox.querySelectorAll('button');
+    items.forEach(item => item.classList.remove('bg-emerald-500/20'));
+}
+
+function navigateSuggestions(e, suggestBox, inputEl) {
+    const items = Array.from(suggestBox.querySelectorAll('button'));
+    if (!items.length) return;
+
+    const activeIndex = items.findIndex(item => item.classList.contains('bg-emerald-500/20'));
+    let nextIndex = activeIndex;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        nextIndex = activeIndex < items.length - 1 ? activeIndex + 1 : 0;
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        nextIndex = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
+    } else if (e.key === 'Enter') {
+        if (activeIndex >= 0) {
+            e.preventDefault();
+            items[activeIndex].click();
+        }
+        return;
+    } else {
+        return;
+    }
+
+    resetSuggestionHighlight(suggestBox);
+    items[nextIndex].classList.add('bg-emerald-500/20');
+    items[nextIndex].scrollIntoView({ block: 'nearest' });
 }
 
 // Smart Search: Recent searches logic
