@@ -54,6 +54,7 @@ The backend server runs on Python 3.10+.
    cd backend
    copy .env.example .env
    ```
+   Make sure `ALLOWED_ORIGINS` is a comma-separated list, and set `ADMIN_DASHBOARD_PASSWORD` to a secure value for production.
 
 5. **Configure Gemini API Key** (Optional):
    Set the API key in your `.env` file or directly in your environment. If no key is set, the backend runs seamlessly using a fallback local heuristic parser.

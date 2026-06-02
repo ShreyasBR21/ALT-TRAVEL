@@ -2,43 +2,24 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
-import os
 import logging
 import math
 import io
 import base64
 from PIL import Image
-from dotenv import load_dotenv
+from config import Settings
 
-# Load environment variables from .env file
-load_dotenv()
+settings = Settings()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AltTravelBackend")
 
-# Runtime configuration from environment variables
-APP_HOST = os.environ.get("HOST", "127.0.0.1")
-APP_PORT = int(os.environ.get("PORT", "8000"))
-ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-DEBUG_MODE = os.environ.get("DEBUG", "false").strip().lower() in {"1", "true", "yes", "on"}
-ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get("ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
-if not ALLOWED_ORIGINS:
-    ALLOWED_ORIGINS = ["*"]
-ADMIN_DASHBOARD_PASSWORD = os.environ.get("ADMIN_DASHBOARD_PASSWORD", "alt-travel-admin-pass-2026")
-DATABASE_URL = os.environ.get("DATABASE_URL")
-REDIS_URL = os.environ.get("REDIS_URL")
-MAPBOX_SECRET_TOKEN = os.environ.get("MAPBOX_SECRET_TOKEN")
-AMADEUS_CLIENT_ID = os.environ.get("AMADEUS_CLIENT_ID")
-AMADEUS_CLIENT_SECRET = os.environ.get("AMADEUS_CLIENT_SECRET")
-RADAR_SECRET_KEY = os.environ.get("RADAR_SECRET_KEY")
-BRIGHTDATA_PROXY_URL = os.environ.get("BRIGHTDATA_PROXY_URL")
-
-if DEBUG_MODE:
+if settings.debug:
     logger.setLevel(logging.DEBUG)
 
-logger.info(f"Starting AltTravel backend in {ENVIRONMENT} mode")
-logger.info(f"Configured CORS origins: {ALLOWED_ORIGINS}")
+logger.info(f"Starting AltTravel backend in {settings.environment} mode")
+logger.info(f"Configured CORS origins: {settings.allowed_origins}")
 
 app = FastAPI(
     title="AltTravel API - SaaS Edition",
@@ -49,14 +30,14 @@ app = FastAPI(
 # Enable CORS middleware to allow communication with frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Initialize Google Generative AI
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+GEMINI_API_KEY = settings.gemini_api_key or settings.google_api_key
 if GEMINI_API_KEY:
     import google.generativeai as genai
     genai.configure(api_key=GEMINI_API_KEY)
@@ -636,7 +617,7 @@ def get_analytics(token: str = Query(None, description="Admin verification token
     # Secure endpoint check supporting both old static pass and role-based session token
     user = get_user_from_token(token)
     is_admin = user and user["role"] == "Admin"
-    if not is_admin and token != ADMIN_DASHBOARD_PASSWORD:
+    if not is_admin and token != settings.admin_dashboard_password:
         raise HTTPException(status_code=401, detail="Unauthorized dashboard access token.")
         
     total_diverted = sum(ANALYTICS_DB["alternatives"].values())
@@ -655,10 +636,10 @@ def get_analytics(token: str = Query(None, description="Admin verification token
 def health_check():
     return {
         "status": "healthy",
-        "environment": ENVIRONMENT,
+        "environment": settings.environment,
         "gemini_enabled": GEMINI_API_KEY is not None,
-        "database_configured": bool(DATABASE_URL),
-        "redis_configured": bool(REDIS_URL)
+        "database_configured": bool(settings.database_url),
+        "redis_configured": bool(settings.redis_url)
     }
 
 if __name__ == "__main__":
