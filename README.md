@@ -89,6 +89,11 @@ Try the deployed instances:
 
 If you want the frontend to point to a different backend, set the `REACT_APP_BACKEND_URL` environment variable in your Vercel project settings and redeploy.
 
+## **Team**
+
+- Shreyas B R
+- Shreyas S V
+
 ## Continuous Integration
 
 A GitHub Actions workflow has been added in `.github/workflows/python-ci.yml` to validate backend Python syntax on pushes and pull requests to `main`.
