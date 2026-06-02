@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: alttravel-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: HOST
+        value: 0.0.0.0
+      - key: ALLOWED_ORIGINS
+        value: https://YOUR_VERCEL_FRONTEND_URL.vercel.app
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ADMIN_DASHBOARD_PASSWORD
+        sync: false
+    autoDeploy: true
+    rootDir: backend

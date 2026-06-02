@@ -1,90 +1,157 @@
-# Deployment Guide: Google Cloud Run + Vercel
+# Deployment Guide: Render + Vercel
 
-## Prerequisites
+Deploy AltTravel backend to **Render** and frontend to **Vercel** with a few clicks.
 
-1. **Google Cloud**
-   - Create a project at https://console.cloud.google.com
-   - Enable Cloud Run API
-   - Create a Service Account with "Cloud Run Admin" and "Container Registry Service Agent" roles
-   - Generate and download a JSON key
+## Quick Start
 
-2. **Vercel**
-   - Create account at https://vercel.com
-   - Invite repository
-   - Get Vercel Token from https://vercel.com/account/tokens
+### Backend (Render)
 
-## GitHub Secrets Setup
+1. Go to https://render.com → Sign up or login
+2. Click **"New"** → **"Web Service"**
+3. Select your GitHub repository
+4. Configure:
+   - **Name**: `alttravel-backend`
+   - **Root Directory**: `backend`
+   - **Runtime**: Python 3.11
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python main.py`
+   - **Plan**: Free
 
-Add these secrets to your GitHub repository settings (Settings → Secrets and variables → Actions):
+5. Add **Environment Variables**:
+   ```
+   PORT=8000
+   ENVIRONMENT=production
+   DEBUG=false
+   HOST=0.0.0.0
+   ALLOWED_ORIGINS=https://YOUR_VERCEL_DOMAIN.vercel.app
+   GEMINI_API_KEY=your-api-key
+   ADMIN_DASHBOARD_PASSWORD=your-secure-password
+   ```
 
-### Google Cloud Secrets
+6. Click **"Create Web Service"** → Done! Backend auto-deploys on `main` push
 
-- **GCP_PROJECT_ID**: Your Google Cloud project ID (e.g., `my-alttravel-project`)
-- **GCP_SA_KEY**: Contents of the Service Account JSON key file (full JSON)
-- **ALLOWED_ORIGINS**: Comma-separated list of allowed origins
-  - Example: `https://alttravel.vercel.app,https://your-domain.com`
+### Frontend (Vercel)
 
-### Google Secret Manager (for sensitive env vars)
+1. Go to https://vercel.com → Sign up or login
+2. Click **"Add New..."** → **"Project"**
+3. Import your GitHub repository
+4. Configure:
+   - **Framework Preset**: Other/Static
+   - **Build Command**: (leave empty)
+   - **Output Directory**: `./` (root of frontend folder)
+5. Click **"Deploy"** → Done!
 
-Before deploying, create these secrets in Google Secret Manager:
+## Environment Variables
 
-```bash
-gcloud secrets create admin-pass --replication-policy='automatic' --data-file=- <<< 'your-secure-password'
-gcloud secrets create gemini-key --replication-policy='automatic' --data-file=- <<< 'your-gemini-api-key'
+### Render Backend
+
+Set these in Render dashboard (Settings → Environment):
+
+```
+PORT=8000
+ENVIRONMENT=production
+DEBUG=false
+HOST=0.0.0.0
+ALLOWED_ORIGINS=https://your-vercel-url.vercel.app
+GEMINI_API_KEY=<your-key>
+ADMIN_DASHBOARD_PASSWORD=<secure-password>
 ```
 
-Grant Cloud Run service account access:
-```bash
-gcloud secrets add-iam-policy-binding admin-pass \
-  --member=serviceAccount:YOUR_SA_EMAIL \
-  --role=roles/secretmanager.secretAccessor
+### Vercel Frontend
 
-gcloud secrets add-iam-policy-binding gemini-key \
-  --member=serviceAccount:YOUR_SA_EMAIL \
-  --role=roles/secretmanager.secretAccessor
+Set these in Vercel dashboard (Settings → Environment Variables):
+
+```
+BACKEND_URL=https://your-render-backend-name.onrender.com
 ```
 
-### Vercel Secrets
+## GitHub Secrets (Optional)
 
-- **VERCEL_TOKEN**: Personal access token from Vercel account
-- **VERCEL_ORG_ID**: Your Vercel organization/team ID
-- **VERCEL_PROJECT_ID**: Project ID (found in Vercel project settings)
+For GitHub Actions notifications, add to your repo Settings → Secrets:
 
-## Environment Variables in Vercel
-
-Set the backend URL in Vercel dashboard:
-- Variable: `BACKEND_URL`
-- Value: `https://alttravel-backend-xxxxx.run.app` (from Cloud Run output)
-
-Or update frontend `app.js` to read from `window.location.hostname` for dynamic URLs.
-
-## Manual Deployment (if GitHub Actions fails)
-
-### Cloud Run
-```bash
-gcloud run deploy alttravel-backend \
-  --source backend \
-  --runtime python311 \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars "ENVIRONMENT=production,ALLOWED_ORIGINS=https://alttravel.vercel.app"
+```
+VERCEL_TOKEN=<from https://vercel.com/account/tokens>
+VERCEL_ORG_ID=<your-org-id>
+VERCEL_PROJECT_ID=<from Vercel project settings>
 ```
 
-### Vercel
-```bash
-cd frontend
-vercel --prod --token YOUR_VERCEL_TOKEN
-```
+## After Deployment
 
-## Verify Deployment
+- **Backend API**: `https://your-backend.onrender.com`
+- **Backend Health**: `https://your-backend.onrender.com/api/health`
+- **API Docs**: `https://your-backend.onrender.com/docs`
+- **Frontend**: `https://your-frontend.vercel.app`
 
-- **Backend Health**: https://alttravel-backend-xxxxx.run.app/api/health
-- **Frontend**: https://alttravel.vercel.app
-- **API Docs**: https://alttravel-backend-xxxxx.run.app/docs
+## Updating Code
+
+Just push to `main` branch:
+- **Backend**: Render auto-redeploys within 2 minutes
+- **Frontend**: Vercel auto-redeploys within 1 minute
+
+## Custom Domain
+
+### Render (Backend)
+1. Render dashboard → Select service
+2. Settings → Custom Domain
+3. Add your domain (e.g., `api.yourdomain.com`)
+4. Follow DNS setup instructions
+
+### Vercel (Frontend)
+1. Vercel dashboard → Select project
+2. Settings → Domains
+3. Add your domain (e.g., `yourdomain.com`)
+4. Follow DNS setup instructions
+
+## Database (Optional)
+
+If you need persistent storage for reports/analytics:
+
+**Option 1: Render PostgreSQL**
+1. Render dashboard → "New" → "PostgreSQL"
+2. Copy connection string
+3. Add to backend `DATABASE_URL`
+
+**Option 2: Neon (free tier)**
+1. Go to https://neon.tech
+2. Create PostgreSQL project
+3. Copy connection string
+4. Add to backend `DATABASE_URL`
 
 ## Troubleshooting
 
-- **Cloud Run builds failing**: Check `gcloud builds log [BUILD_ID]`
-- **Vercel deployment stuck**: Check Vercel dashboard logs
-- **CORS errors**: Update `ALLOWED_ORIGINS` in Cloud Run environment variables
-- **Missing secrets**: Verify all secrets exist in GitHub and Google Secret Manager
+### Backend won't deploy
+- Check Render logs: Dashboard → Service → Logs
+- Verify `requirements.txt` exists in `backend/` folder
+- Check `render.yaml` or manual service config
+
+### Frontend showing old content
+- Clear browser cache (Ctrl+Shift+Del)
+- Vercel → Deployments → Redeploy
+
+### CORS errors
+- Update `ALLOWED_ORIGINS` in Render backend settings
+- Wait for redeploy (check Render dashboard)
+- Clear frontend cache
+
+### Backend can't reach database
+- Verify `DATABASE_URL` environment variable is set
+- Test connection string locally first
+- Check database is running
+
+## Scaling
+
+**Free tier limits:**
+- Render: 0.5 vCPU, 512MB RAM (auto-pauses after 15 mins inactivity)
+- Vercel: Static hosting (unlimited bandwidth)
+
+**When you need to scale:**
+- Render → Upgrade to Starter plan (runs 24/7)
+- Vercel → Pro plan for larger projects
+
+## Costs
+
+- **Render Backend**: Free (paused), $7+/month (starter)
+- **Vercel Frontend**: Free
+- **Database**: $7/month (if using Postgres)
+
+**Free tier estimated**: $0-7/month

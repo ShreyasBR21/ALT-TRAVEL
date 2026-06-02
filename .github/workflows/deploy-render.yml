@@ -1,0 +1,24 @@
+name: Deploy Backend to Render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-render.yml'
+
+jobs:
+  deploy:
+    name: Deploy backend to Render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Render
+        # Render auto-deploys on push if connected to GitHub
+        # This workflow is optional but good for notifications
+        run: |
+          echo "Backend deployment triggered automatically by Render webhook"
+          echo "Check https://dashboard.render.com for deployment status"
