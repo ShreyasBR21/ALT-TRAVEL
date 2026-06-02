@@ -48,8 +48,15 @@ The backend server runs on Python 3.10+.
    pip install -r requirements.txt
    ```
 
-4. **Configure Gemini API Key** (Optional):
-   Set the API key in your environment. If no key is set, the backend runs seamlessly using a fallback local heuristic parser.
+4. **Create your `.env` file**:
+   Copy the sample file and update the values for your environment.
+   ```bash
+   cd backend
+   copy .env.example .env
+   ```
+
+5. **Configure Gemini API Key** (Optional):
+   Set the API key in your `.env` file or directly in your environment. If no key is set, the backend runs seamlessly using a fallback local heuristic parser.
    
    * **Windows CMD**:
      ```cmd
@@ -64,10 +71,12 @@ The backend server runs on Python 3.10+.
      export GEMINI_API_KEY="your_gemini_api_key_here"
      ```
 
-5. **Start the FastAPI application**:
+6. **Start the FastAPI application**:
    ```bash
    uvicorn main:app --reload
    ```
+   You can also run the backend with `python main.py` to use `HOST` and `PORT` from your `.env` file.
+
    The backend server will launch on `http://127.0.0.1:8000`. You can inspect the interactive API documentation at `http://127.0.0.1:8000/docs`.
 
 ---

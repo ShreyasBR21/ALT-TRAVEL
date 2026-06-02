@@ -17,6 +17,29 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("AltTravelBackend")
 
+# Runtime configuration from environment variables
+APP_HOST = os.environ.get("HOST", "127.0.0.1")
+APP_PORT = int(os.environ.get("PORT", "8000"))
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+DEBUG_MODE = os.environ.get("DEBUG", "false").strip().lower() in {"1", "true", "yes", "on"}
+ALLOWED_ORIGINS = [origin.strip() for origin in os.environ.get("ALLOWED_ORIGINS", "*").split(",") if origin.strip()]
+if not ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS = ["*"]
+ADMIN_DASHBOARD_PASSWORD = os.environ.get("ADMIN_DASHBOARD_PASSWORD", "alt-travel-admin-pass-2026")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+REDIS_URL = os.environ.get("REDIS_URL")
+MAPBOX_SECRET_TOKEN = os.environ.get("MAPBOX_SECRET_TOKEN")
+AMADEUS_CLIENT_ID = os.environ.get("AMADEUS_CLIENT_ID")
+AMADEUS_CLIENT_SECRET = os.environ.get("AMADEUS_CLIENT_SECRET")
+RADAR_SECRET_KEY = os.environ.get("RADAR_SECRET_KEY")
+BRIGHTDATA_PROXY_URL = os.environ.get("BRIGHTDATA_PROXY_URL")
+
+if DEBUG_MODE:
+    logger.setLevel(logging.DEBUG)
+
+logger.info(f"Starting AltTravel backend in {ENVIRONMENT} mode")
+logger.info(f"Configured CORS origins: {ALLOWED_ORIGINS}")
+
 app = FastAPI(
     title="AltTravel API - SaaS Edition",
     description="Extended backend API with predictive analytics, eco-gamification verification, itinerary optimizing graph and B2B reports.",
@@ -26,7 +49,7 @@ app = FastAPI(
 # Enable CORS middleware to allow communication with frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the exact domains
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -176,12 +199,6 @@ class LoginResponse(BaseModel):
     name: str
     message: str
 
-class GeminiAestheticAnalysis(BaseModel):
-    aesthetic_traits: List[str] = Field(description="A list of 3-5 core aesthetic traits of the queried location (e.g., heritage monuments, snow mountains, alpine valleys, beaches, coastal).")
-    vibe_description: str = Field(description="A short, descriptive, poetic summary of the destination's unique atmosphere (1-2 sentences).")
-    suggested_hotspot: str = Field(description="The closest matching crowded hotspot key from the following selection only: 'tajmahal', 'manali', 'goa'. Make the best logical association.")
-    direct_alternative_match: str = Field(description="If the query directly names or requests one of the alternatives: 'Orchha, Madhya Pradesh', 'Mandu, Madhya Pradesh', 'Jibhi, Himachal Pradesh', 'Landour, Uttarakhand', 'Gokarna, Karnataka', 'Tarkarli, Maharashtra', specify the exact full alternative name here. Otherwise return an empty string.")
-
 class SwapRequest(BaseModel):
     destination: str
     hour: Optional[int] = Field(12, ge=8, le=22, description="Optional hour for predictive crowd forecasting.")
@@ -200,6 +217,13 @@ class HotspotDetail(BaseModel):
     crowd_index: int
     danger_level: str
     description: str
+
+class RealTimeGeminiSwap(BaseModel):
+    aesthetic_traits: List[str] = Field(description="A list of 3-5 core aesthetic traits of the queried location.")
+    vibe_description: str = Field(description="A short, descriptive, poetic summary of the destination's unique atmosphere (1-2 sentences).")
+    hotspot: HotspotDetail = Field(description="The overcrowded tourist trap hotspot related to the query.")
+    alternatives: List[AlternativeDetail] = Field(description="Exactly two lesser-known, under-visited alternative destinations in India that share a similar vibe.")
+    direct_alternative_match: str = Field(description="If the query directly names or requests one of the alternatives, specify the exact full alternative name here. Otherwise return an empty string.")
 
 class GeminiMeta(BaseModel):
     aesthetic_traits: List[str]
@@ -265,8 +289,6 @@ def predict_crowd_index(base_index: int, hour: int) -> int:
 
 def local_heuristic_analysis(destination: str) -> dict:
     dest_lower = destination.lower()
-    
-    # Smart Search: Check for direct alternative substring matches
     direct_alt = None
     alternatives_list = [
         "Orchha, Madhya Pradesh", "Mandu, Madhya Pradesh",
@@ -274,39 +296,31 @@ def local_heuristic_analysis(destination: str) -> dict:
         "Gokarna, Karnataka", "Tarkarli, Maharashtra"
     ]
     for alt in alternatives_list:
-        alt_base = alt.split(",")[0].lower().strip()
-        if alt_base in dest_lower:
+        if alt.split(",")[0].lower().strip() in dest_lower:
             direct_alt = alt
             break
 
     if any(k in dest_lower for k in ["taj", "mahal", "agra", "historic", "architecture", "monument", "orchha", "mandu", "palace", "tomb"]):
-        return {
-            "aesthetic_traits": ["Mughal Heritage", "Palaces", "Intricate Carvings", "Historic Forts", "Royal Cenotaphs"],
-            "vibe_description": "Vibrant and majestic heritage monuments boasting historical palaces, imposing stone fortification walls, and royal riverside cenotaphs.",
-            "suggested_hotspot": "tajmahal",
-            "direct_alternative_match": direct_alt
-        }
-    elif any(k in dest_lower for k in ["manali", "shimla", "mountain", "snow", "hill", "jibhi", "landour", "pine", "valley", "trek"]):
-        return {
-            "aesthetic_traits": ["Alpine Valleys", "Cedar Forests", "Snow-capped Peaks", "Quiet Streams", "Wooden Cottages"],
-            "vibe_description": "Serene and alpine hill stations composed of rushing snowmelt streams, thick pine forests, and rustic Himalayan wooden architectures.",
-            "suggested_hotspot": "manali",
-            "direct_alternative_match": direct_alt
-        }
+        hotspot_key = "tajmahal"
     elif any(k in dest_lower for k in ["goa", "beach", "coastal", "sea", "ocean", "gokarna", "tarkarli", "coastline", "sunsets"]):
-        return {
-            "aesthetic_traits": ["White Sand Beaches", "Coastal Trails", "Sunset Views", "Offshore Sea Forts", "Laidback Vibe"],
-            "vibe_description": "Relaxing and breezy coastal shores displaying pristine crescent beaches, rugged cliff hikes, and ancient seaside stone fortresses.",
-            "suggested_hotspot": "goa",
-            "direct_alternative_match": direct_alt
-        }
+        hotspot_key = "goa"
     else:
-        return {
-            "aesthetic_traits": ["Culture", "Scenic Vistas", "Heritage"],
-            "vibe_description": f"A historic and culturally rich destination offering iconic architectural styles, local heritage, and scenic lookouts.",
-            "suggested_hotspot": "manali",
-            "direct_alternative_match": direct_alt
-        }
+        hotspot_key = "manali"
+
+    h = HOTSPOTS_DB[hotspot_key]
+    return {
+        "aesthetic_traits": ["Culture", "Scenic Vistas", "Heritage"] if hotspot_key == "manali" else ["Mughal Heritage"] if hotspot_key == "tajmahal" else ["White Sand Beaches"],
+        "vibe_description": h["description"],
+        "hotspot": {
+            "name": h["name"],
+            "coordinates": h["coordinates"],
+            "crowd_index": h["crowd_index"],
+            "danger_level": h["danger_level"],
+            "description": h["description"]
+        },
+        "alternatives": h["alternatives"],
+        "direct_alternative_match": direct_alt
+    }
 
 def run_gemini_analysis(destination: str) -> dict:
     if not GEMINI_API_KEY:
@@ -316,7 +330,7 @@ def run_gemini_analysis(destination: str) -> dict:
         return res
 
     try:
-        models_to_try = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+        models_to_try = ["gemini-1.5-flash", "gemini-2.5-flash"]
         model = None
         error_msg = ""
         
@@ -332,39 +346,30 @@ def run_gemini_analysis(destination: str) -> dict:
             raise Exception(f"All models failed. Last error: {error_msg}")
             
         prompt = (
-            f"Analyze the travel destination or query: '{destination}'.\n"
-            "Identify its core aesthetic qualities and map it to the most similar overcrowded Indian hotspot "
-            "from: 'tajmahal' (for historical heritage monuments/tombs/palaces), 'manali' (for snow mountains/hill stations/pine forests/valleys), "
-            "or 'goa' (for beaches/coastal views/sea/laidback vibe).\n"
-            "Also, if the query directly names or requests one of these alternatives:\n"
-            "- 'Orchha, Madhya Pradesh'\n"
-            "- 'Mandu, Madhya Pradesh'\n"
-            "- 'Jibhi, Himachal Pradesh'\n"
-            "- 'Landour, Uttarakhand'\n"
-            "- 'Gokarna, Karnataka'\n"
-            "- 'Tarkarli, Maharashtra'\n"
-            "Identify it in the 'direct_alternative_match' property. Conform strictly to the schema."
+            f"Analyze the travel destination or query: '{destination}'.\\n"
+            "Identify its core aesthetic qualities and vibe.\\n"
+            "Identify the most similar overcrowded Indian hotspot trap related to this query (e.g. Manali, Goa, Taj Mahal, Mysore Palace, etc.) and generate its details.\\n"
+            "Generate exactly two lesser-known, under-visited alternative destinations in India that share a similar vibe to the hotspot.\\n"
+            "If the query directly names an alternative, put its name in 'direct_alternative_match' and provide two other alternatives.\\n"
+            "Conform strictly to the JSON schema."
         )
         
         response = model.generate_content(
             prompt,
             generation_config=genai.GenerationConfig(
                 response_mime_type="application/json",
-                response_schema=GeminiAestheticAnalysis
+                response_schema=RealTimeGeminiSwap
             )
         )
         
         import json
         data = json.loads(response.text)
         
-        suggested = data.get("suggested_hotspot", "").lower().strip()
-        if suggested not in HOTSPOTS_DB:
-            suggested = local_heuristic_analysis(destination)["suggested_hotspot"]
-            
         return {
             "aesthetic_traits": data.get("aesthetic_traits", ["Scenic", "Cultural"]),
             "vibe_description": data.get("vibe_description", "An appealing vacation spot with unique local charms."),
-            "suggested_hotspot": suggested,
+            "hotspot": data.get("hotspot"),
+            "alternatives": data.get("alternatives", []),
             "is_mock": False,
             "direct_alternative_match": data.get("direct_alternative_match") if data.get("direct_alternative_match") else None
         }
@@ -411,16 +416,14 @@ def swap_destination_get(
     
     # Run analysis
     analysis_res = run_gemini_analysis(destination)
-    hotspot_key = analysis_res["suggested_hotspot"]
-    hotspot_data = HOTSPOTS_DB[hotspot_key]
+    hotspot_data = analysis_res["hotspot"]
+    alternatives_data = analysis_res["alternatives"]
     
     # Calculate forecasted crowd indexes
     hotspot_predicted = predict_crowd_index(hotspot_data["crowd_index"], hour)
     
     # Log search for B2B analytics
     ANALYTICS_DB["total_searches"] += 1
-    if hotspot_key in ANALYTICS_DB["hotspots"]:
-        ANALYTICS_DB["hotspots"][hotspot_key] += 1
         
     return SwapResponse(
         success=True,
@@ -441,7 +444,7 @@ def swap_destination_get(
                 description=alt["description"],
                 highlight=alt["highlight"]
             )
-            for alt in hotspot_data["alternatives"]
+            for alt in alternatives_data
         ],
         analysis=GeminiMeta(
             aesthetic_traits=analysis_res["aesthetic_traits"],
@@ -633,7 +636,7 @@ def get_analytics(token: str = Query(None, description="Admin verification token
     # Secure endpoint check supporting both old static pass and role-based session token
     user = get_user_from_token(token)
     is_admin = user and user["role"] == "Admin"
-    if not is_admin and token != "alt-travel-admin-pass-2026":
+    if not is_admin and token != ADMIN_DASHBOARD_PASSWORD:
         raise HTTPException(status_code=401, detail="Unauthorized dashboard access token.")
         
     total_diverted = sum(ANALYTICS_DB["alternatives"].values())
@@ -650,4 +653,20 @@ def get_analytics(token: str = Query(None, description="Admin verification token
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "healthy", "gemini_enabled": GEMINI_API_KEY is not None}
+    return {
+        "status": "healthy",
+        "environment": ENVIRONMENT,
+        "gemini_enabled": GEMINI_API_KEY is not None,
+        "database_configured": bool(DATABASE_URL),
+        "redis_configured": bool(REDIS_URL)
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host=APP_HOST,
+        port=APP_PORT,
+        reload=DEBUG_MODE,
+    )
