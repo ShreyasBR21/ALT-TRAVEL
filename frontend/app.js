@@ -1,21 +1,16 @@
 // Upgraded frontend app script implementing SaaS Pro Features
 
-// Default Mapbox public read-only token
-const DEFAULT_MAPBOX_TOKEN = '';
-let mapboxToken = localStorage.getItem('mapbox_token') || DEFAULT_MAPBOX_TOKEN;
-
 // Backend URL - reads from localStorage, environment, or defaults to localhost
 let BACKEND_URL = localStorage.getItem('alt_travel_backend_url') ||
                   (typeof process !== 'undefined' && process.env.REACT_APP_BACKEND_URL) ||
                   (window.location.hostname === 'localhost' ? 'http://127.0.0.1:8000' : 'https://alt-travel.onrender.com');
 
 // Global variables
-let mapInstance = null;
-let mapMarkers = [];
 let currentAlternatives = [];
 let currentHotspot = null;
 let searchQuery = "";
 let currentHour = 12;
+let suggestionDebounceTimer = null;
 
 // Itinerary mock memory database
 let itineraryData = [
@@ -35,15 +30,6 @@ const elements = {
     backToSearch: document.getElementById('back-to-search'),
     navLogo: document.getElementById('nav-logo'),
     
-    // Settings modal
-    toggleSettings: document.getElementById('toggle-settings'),
-    settingsModal: document.getElementById('settings-modal'),
-    closeSettings: document.getElementById('close-settings'),
-    mapboxTokenInput: document.getElementById('mapbox-token-input'),
-    saveTokenBtn: document.getElementById('save-token-btn'),
-    cancelTokenBtn: document.getElementById('cancel-token-btn'),
-    resetTokenBtn: document.getElementById('reset-token-btn'),
-    
     // Hotspot display
     hotspotDangerLabel: document.getElementById('hotspot-danger-label'),
     hotspotCrowdPct: document.getElementById('hotspot-crowd-pct'),
@@ -60,6 +46,9 @@ const elements = {
     
     // Alternatives display
     alternativesContainer: document.getElementById('alternatives-container'),
+    routeOverviewPanel: document.getElementById('route-overview-panel'),
+    routeTiles: document.getElementById('route-tiles'),
+    routeSummaryList: document.getElementById('route-summary-list'),
     
     // Geolocation Eco-Pass Modal
     ecopassModal: document.getElementById('ecopass-modal'),
@@ -170,7 +159,6 @@ const SMART_SEARCH_DATABASE = [
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
-    elements.mapboxTokenInput.value = mapboxToken === DEFAULT_MAPBOX_TOKEN ? '' : mapboxToken;
     updateAuthUI();
     renderRecentSearches();
 });
@@ -273,24 +261,30 @@ function setupEventListeners() {
     });
 
     // Smart Search: Autosuggest events
-    elements.destinationInput.addEventListener('input', (e) => {
-        showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
+    elements.destinationInput.addEventListener('input', async (e) => {
+        clearTimeout(suggestionDebounceTimer);
+        suggestionDebounceTimer = setTimeout(async () => {
+            await showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
+        }, 180);
     });
 
-    elements.destinationInput.addEventListener('focus', (e) => {
-        showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
+    elements.destinationInput.addEventListener('focus', async (e) => {
+        await showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
     });
 
     elements.destinationInput.addEventListener('keydown', (e) => {
         navigateSuggestions(e, elements.landingAutosuggest, elements.destinationInput);
     });
 
-    elements.resultsSearchInput.addEventListener('input', (e) => {
-        showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
+    elements.resultsSearchInput.addEventListener('input', async (e) => {
+        clearTimeout(suggestionDebounceTimer);
+        suggestionDebounceTimer = setTimeout(async () => {
+            await showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
+        }, 180);
     });
 
-    elements.resultsSearchInput.addEventListener('focus', (e) => {
-        showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
+    elements.resultsSearchInput.addEventListener('focus', async (e) => {
+        await showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
     });
 
     elements.resultsSearchInput.addEventListener('keydown', (e) => {
@@ -338,41 +332,46 @@ function setupEventListeners() {
     elements.backToSearch.addEventListener('click', showLanding);
     elements.navLogo.addEventListener('click', showLanding);
 
-    // Settings Modal controls
-    elements.toggleSettings.addEventListener('click', () => elements.settingsModal.classList.remove('hidden'));
-    elements.closeSettings.addEventListener('click', () => elements.settingsModal.classList.add('hidden'));
-    elements.cancelTokenBtn.addEventListener('click', () => elements.settingsModal.classList.add('hidden'));
-
-    elements.saveTokenBtn.addEventListener('click', () => {
-        const token = elements.mapboxTokenInput.value.trim();
-        if (token) {
-            mapboxToken = token;
-            localStorage.setItem('mapbox_token', token);
-            showToast('Saved custom Mapbox token!');
-        } else {
-            mapboxToken = DEFAULT_MAPBOX_TOKEN;
-            localStorage.removeItem('mapbox_token');
-            showToast('Cleared custom token. Default active.');
-        }
-        elements.settingsModal.classList.add('hidden');
-        if (mapInstance) {
-            initializeMap(mapInstance.getCenter().lng, mapInstance.getCenter().lat);
-        }
-    });
-
-    elements.resetTokenBtn.addEventListener('click', () => {
-        elements.mapboxTokenInput.value = '';
-        mapboxToken = DEFAULT_MAPBOX_TOKEN;
-        localStorage.removeItem('mapbox_token');
-        showToast('Reset to default Mapbox token');
-        elements.settingsModal.classList.add('hidden');
-        if (mapInstance) {
-            initializeMap(mapInstance.getCenter().lng, mapInstance.getCenter().lat);
-        }
-    });
-
     // Eco-Pass Modals
     elements.closeEcopass.addEventListener('click', () => elements.ecopassModal.classList.add('hidden'));
+    
+    // Eco-Guide Modal close
+    const ecoguideModal = document.getElementById('ecoguide-modal');
+    const ecoguideBox = document.getElementById('ecoguide-box');
+    const closeEcoguideBtn = document.getElementById('close-ecoguide');
+    const claimGuidePassBtn = document.getElementById('claim-guide-pass');
+    
+    const dismissEcoguide = () => {
+        if (ecoguideModal) {
+            ecoguideModal.classList.add('opacity-0');
+        }
+        if (ecoguideBox) {
+            ecoguideBox.classList.add('scale-95');
+        }
+        setTimeout(() => {
+            if (ecoguideModal) {
+                ecoguideModal.classList.add('hidden');
+            }
+        }, 300);
+    };
+
+    if (closeEcoguideBtn) {
+        closeEcoguideBtn.addEventListener('click', dismissEcoguide);
+    }
+    if (claimGuidePassBtn) {
+        claimGuidePassBtn.addEventListener('click', () => {
+            dismissEcoguide();
+            showToast('AI Eco-Guide added to active plans!');
+        });
+    }
+    if (ecoguideModal) {
+        ecoguideModal.addEventListener('click', (e) => {
+            if (e.target === ecoguideModal) {
+                dismissEcoguide();
+            }
+        });
+    }
+
     elements.claimEcopassBtn.addEventListener('click', () => {
         elements.ecopassModal.classList.add('hidden');
         showToast('Eco-Pass rewards claimed successfully!');
@@ -537,6 +536,8 @@ function renderResults(payload) {
         ? 'Local Heuristic Analysis Engine Active' 
         : 'Gemini AI Structured Schema Enforced';
 
+    renderRouteOverview(hotspot, alternatives, analysis);
+
     // 3. Render Alternatives Card List with stagger animations
     elements.alternativesContainer.innerHTML = alternatives.map((alt, index) => {
         const delayClass = `delay-${Math.min(index, 5)}`;
@@ -585,221 +586,163 @@ function renderResults(payload) {
             
             const index = card.getAttribute('data-index');
             const targetAlt = currentAlternatives[index];
-            if (targetAlt && mapInstance) {
-                mapInstance.flyTo({
-                    center: targetAlt.coordinates,
-                    zoom: 11,
-                    essential: true,
-                    duration: 2000
-                });
-                
+            if (targetAlt) {
+                showToast(`Selected alternative: ${targetAlt.name}`);
+                renderRouteOverview(currentHotspot, currentAlternatives, targetAlt);
                 // Track redirection metrics for B2B Dashboard
                 fetch(`${BACKEND_URL}/api/analytics/log-redirection`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ alternative: targetAlt.name })
                 }).catch(err => console.error("Analytics log error:", err));
-
-                mapMarkers.forEach(m => {
-                    const markerLngLat = m.getLngLat();
-                    if (Math.abs(markerLngLat.lng - targetAlt.coordinates[0]) < 0.0001 &&
-                        Math.abs(markerLngLat.lat - targetAlt.coordinates[1]) < 0.0001) {
-                        m.togglePopup();
-                    }
-                });
             }
         });
     });
 
-    // Attach Eco-Pass check-in buttons event listeners
-    const checkinBtns = elements.alternativesContainer.querySelectorAll('.eco-checkin-btn');
-    checkinBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const destinationName = btn.getAttribute('data-dest');
-            triggerEcoPassCheckin(destinationName);
-        });
-    });
-
-    // 4. Load Field Reports feed list
-    fetchAndRenderReports(hotspot.name);
-
-    // 5. Reveal Results screen with slide-left effect on left panel
-    elements.landingView.classList.add('hidden');
-    elements.loadingView.classList.add('hidden');
-    elements.resultsView.classList.remove('hidden');
-    // Apply slide-in animation to the left panel
-    const leftPanel = elements.resultsView.querySelector('.md\\:w-\\[35\\%\\]');
-    if (leftPanel) {
-        leftPanel.classList.remove('anim-slide-left');
-        requestAnimationFrame(() => leftPanel.classList.add('anim-slide-left'));
-    }
-
-    // 6. Initialize Map
-    initializeMapAndPins(hotspot, alternatives);
-
-    // 7. Animate crowd percentage bar and counter
-    setTimeout(() => {
-        // Animate the hotspot crowd bar
-        elements.hotspotLoadBar.classList.remove('progress-animated');
-        requestAnimationFrame(() => elements.hotspotLoadBar.classList.add('progress-animated'));
-        // Animate hotspot crowd counter up from 0
-        animateCounter(elements.hotspotCrowdPct, hotspot.crowd_index, '%');
-        // Animate alternative crowd counters
-        elements.alternativesContainer.querySelectorAll('.alt-crowd-pct').forEach(el => {
-            const target = parseInt(el.getAttribute('data-target'), 10);
-            animateCounter(el, target, '%');
-        });
-    }, 120);
-
-    // Smart Search: If direct alternative match is found, automatically fly to it and open popup
+    // Smart Search: If direct alternative match is found, highlight the choice in the UI.
     if (payload.analysis && payload.analysis.direct_alternative_match) {
         const matchedAlt = alternatives.find(a => a.name.toLowerCase().trim() === payload.analysis.direct_alternative_match.toLowerCase().trim());
-        if (matchedAlt && mapInstance) {
-            setTimeout(() => {
-                mapInstance.flyTo({
-                    center: matchedAlt.coordinates,
-                    zoom: 11,
-                    essential: true,
-                    duration: 2000
-                });
-                
-                // Track redirection metrics
-                fetch(`${BACKEND_URL}/api/analytics/log-redirection`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ alternative: matchedAlt.name })
-                }).catch(err => console.error("Analytics log error:", err));
-
-                mapMarkers.forEach(m => {
-                    const markerLngLat = m.getLngLat();
-                    if (Math.abs(markerLngLat.lng - matchedAlt.coordinates[0]) < 0.0001 &&
-                        Math.abs(markerLngLat.lat - matchedAlt.coordinates[1]) < 0.0001) {
-                        m.togglePopup();
-                    }
-                });
-                
-                showToast(`Focused on alternative: ${matchedAlt.name}`);
-            }, 1000);
+        if (matchedAlt) {
+            showToast(`Recommended alternative: ${matchedAlt.name}`);
+            renderRouteOverview(hotspot, alternatives, matchedAlt);
         }
     }
 }
 
-function initializeMapAndPins(hotspot, alternatives) {
-    try {
-        mapboxgl.accessToken = mapboxToken;
+function renderRouteOverview(hotspot, alternatives, selectedAlt = null) {
+    if (!elements.routeTiles || !elements.routeSummaryList) return;
 
-        mapMarkers.forEach(marker => marker.remove());
-        mapMarkers = [];
+    const featureAlt = selectedAlt || alternatives[0] || null;
+    const altCount = alternatives.length;
+    const riskPhrase = hotspot.crowd_index >= 90 ? 'Extreme overcrowding' : hotspot.crowd_index >= 70 ? 'Heavy congestion' : 'High density';
+    const altEase = featureAlt ? (featureAlt.crowd_index <= 35 ? 'Very relaxed' : featureAlt.crowd_index <= 60 ? 'Moderate ease' : 'Mildly busy') : 'Awaiting alternatives';
 
-        if (!mapInstance) {
-            mapInstance = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/dark-v11',
-                center: hotspot.coordinates,
-                zoom: 8,
-                attributionControl: false
-            });
-            mapInstance.addControl(new mapboxgl.NavigationControl(), 'top-right');
-        }
-
-        // Add Hotspot Marker
-        const hotspotEl = document.createElement('div');
-        hotspotEl.className = 'w-7 h-7 rounded-full bg-rose-500 border-4 border-white flex items-center justify-center shadow-lg text-white text-[10px] font-bold cursor-pointer pulse-danger';
-        hotspotEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
-        
-        const hotspotPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <div class="space-y-1 text-xs">
-                <div class="font-bold text-rose-400 uppercase tracking-widest text-[9px]">Congested Hotspot</div>
-                <h4 class="font-bold text-white text-sm">${escapeHTML(hotspot.name)}</h4>
-                <div class="flex items-center space-x-1.5 text-rose-400 font-extrabold mt-1">
-                    <i class="fa-solid fa-people-group"></i>
-                    <span>Crowd Index: ${hotspot.crowd_index}%</span>
+    elements.routeTiles.innerHTML = `
+        <div class="rounded-3xl border border-white/10 bg-slate-950/80 p-5 shadow-lg">
+            <p class="text-xs uppercase tracking-[0.2em] text-emerald-400 font-semibold">Current Hotspot</p>
+            <h5 class="mt-3 text-xl text-white font-bold">${escapeHTML(hotspot.name)}</h5>
+            <p class="mt-2 text-sm text-gray-400 leading-relaxed">${escapeHTML(hotspot.description)}</p>
+            <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                <div class="rounded-2xl bg-white/5 p-3">
+                    <p class="text-[10px] uppercase text-gray-400">Crowd Index</p>
+                    <p class="mt-1 text-lg font-bold text-emerald-400">${hotspot.crowd_index}%</p>
+                </div>
+                <div class="rounded-2xl bg-white/5 p-3">
+                    <p class="text-[10px] uppercase text-gray-400">Risk Level</p>
+                    <p class="mt-1 text-lg font-bold text-white">${escapeHTML(hotspot.danger_level)}</p>
                 </div>
             </div>
-        `);
-
-        const hotspotMarker = new mapboxgl.Marker({ element: hotspotEl })
-            .setLngLat(hotspot.coordinates)
-            .setPopup(hotspotPopup)
-            .addTo(mapInstance);
-            
-        mapMarkers.push(hotspotMarker);
-
-        // Add Alternative Markers
-        alternatives.forEach(alt => {
-            const altEl = document.createElement('div');
-            altEl.className = 'w-6 h-6 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow-lg text-white text-[10px] font-bold cursor-pointer hover:scale-125 transition-transform duration-300';
-            altEl.innerHTML = `<i class="fa-solid fa-leaf"></i>`;
-
-            const altPopup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-                <div class="space-y-1 text-xs">
-                    <div class="font-bold text-emerald-400 uppercase tracking-widest text-[9px]">${alt.similarity}% Vibe Match</div>
-                    <h4 class="font-bold text-white text-sm">${escapeHTML(alt.name)}</h4>
-                    <div class="flex items-center space-x-1.5 text-emerald-400 font-extrabold mt-1">
-                        <i class="fa-solid fa-users-slash"></i>
-                        <span>Crowd: ${alt.crowd_index}%</span>
+        </div>
+        <div class="rounded-3xl border border-white/10 bg-slate-950/80 p-5 shadow-lg flex flex-col justify-between h-full">
+            <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-emerald-400 font-semibold">Featured Alternative</p>
+                <h5 class="mt-3 text-xl text-white font-bold">${featureAlt ? escapeHTML(featureAlt.name) : 'No alternative selected'}</h5>
+                <p class="mt-2 text-sm text-gray-400 leading-relaxed">${featureAlt ? escapeHTML(featureAlt.description) : 'Choose an alternative card to see a focused route plan.'}</p>
+                ${featureAlt ? `
+                <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                    <div class="rounded-2xl bg-white/5 p-3">
+                        <p class="text-[10px] uppercase text-gray-400">Vibe Match</p>
+                        <p class="mt-1 text-lg font-bold text-emerald-400">${featureAlt.similarity}%</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/5 p-3">
+                        <p class="text-[10px] uppercase text-gray-400">Alternative Load</p>
+                        <p class="mt-1 text-lg font-bold text-white">${featureAlt.crowd_index}%</p>
                     </div>
                 </div>
-            `);
-
-            const altMarker = new mapboxgl.Marker({ element: altEl })
-                .setLngLat(alt.coordinates)
-                .setPopup(altPopup)
-                .addTo(mapInstance);
-                
-            mapMarkers.push(altMarker);
-        });
-
-        const bounds = new mapboxgl.LngLatBounds();
-        bounds.extend(hotspot.coordinates);
-        alternatives.forEach(alt => bounds.extend(alt.coordinates));
-        
-        mapInstance.fitBounds(bounds, {
-            padding: { top: 80, bottom: 80, left: 60, right: 60 },
-            maxZoom: 11,
-            duration: 1800
-        });
-
-    } catch (e) {
-        console.error("Mapbox Rendering Error:", e);
-        const mapContainer = document.getElementById('map');
-        mapContainer.innerHTML = `
-            <div class="w-full h-full flex flex-col items-center justify-center bg-slate-950 p-6 text-center space-y-4">
-                <i class="fa-solid fa-circle-exclamation text-rose-400 text-3xl"></i>
-                <h4 class="font-bold text-white">Map Initialization Error</h4>
-                <p class="text-xs text-gray-500 max-w-sm">Mapbox GL JS failed to load. Please configure a valid Access Token.</p>
-                <button id="fallback-settings-btn" class="px-4 py-2 bg-emerald-500 text-darkBg text-xs font-bold rounded-lg hover:bg-emerald-400 transition">
-                    Configure Mapbox Token
+                ` : ''}
+            </div>
+            ${featureAlt ? `
+            <div class="mt-4 pt-3 border-t border-white/5 shrink-0">
+                <button id="generate-ecoguide-btn" class="btn-ripple w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-darkBg text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/20" data-alt="${escapeHTML(featureAlt.name)}">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Generate AI Eco-Guide</span>
                 </button>
             </div>
-        `;
-        document.getElementById('fallback-settings-btn').addEventListener('click', () => {
-            elements.settingsModal.classList.remove('hidden');
+            ` : ''}
+        </div>
+    `;
+
+    const ecoguideBtn = document.getElementById('generate-ecoguide-btn');
+    if (ecoguideBtn) {
+        ecoguideBtn.addEventListener('click', () => {
+            const alternativeName = ecoguideBtn.getAttribute('data-alt');
+            triggerEcoGuideGeneration(alternativeName);
         });
+    }
+
+    elements.routeSummaryList.innerHTML = [
+        `Primary hotspot: <strong>${escapeHTML(hotspot.name)}</strong> with ${hotspot.crowd_index}% crowd load`,
+        featureAlt ? `Top alternative: <strong>${escapeHTML(featureAlt.name)}</strong> at ${featureAlt.similarity}% vibe match` : 'Top alternative: not selected yet',
+        `Alt route ease: <strong>${altEase}</strong>`,
+        `Hotspot condition: <strong>${escapeHTML(riskPhrase)}</strong>`,
+        `Total alternate routes available: <strong>${altCount}</strong>`
+    ].map(item => `<li class="rounded-2xl bg-white/5 p-3 text-gray-300 text-sm leading-relaxed">${item}</li>`).join('');
+}
+
+
+// ================= AI AESTHETIC ECO-GUIDE GENERATION =================
+
+async function triggerEcoGuideGeneration(alternativeName) {
+    const modal = document.getElementById('ecoguide-modal');
+    const box = document.getElementById('ecoguide-box');
+    const loader = document.getElementById('ecoguide-loader');
+    const content = document.getElementById('ecoguide-content');
+    
+    if (!modal || !box || !loader || !content) return;
+    
+    // Set title
+    const titleEl = document.getElementById('ecoguide-title');
+    if (titleEl) {
+        titleEl.textContent = `AI Guide: ${alternativeName}`;
+    }
+    
+    // Show modal & loader, hide content
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        box.classList.remove('scale-95');
+    });
+    loader.classList.remove('hidden');
+    content.classList.add('hidden');
+    
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/alternative/itinerary?alternative=${encodeURIComponent(alternativeName)}`);
+        if (!response.ok) {
+            throw new Error(`Server returned code ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Populate DOM elements
+        document.getElementById('eg-morning').textContent = data.morning_activity;
+        document.getElementById('eg-afternoon').textContent = data.afternoon_activity;
+        document.getElementById('eg-evening').textContent = data.evening_activity;
+        document.getElementById('eg-transit').textContent = data.eco_transit;
+        document.getElementById('eg-eatery').textContent = data.local_eatery;
+        document.getElementById('eg-tip').textContent = data.sustainable_tip;
+        
+        // Hide loader, show content
+        loader.classList.add('hidden');
+        content.classList.remove('hidden');
+        
+        // Animate timeline nodes entry
+        const nodes = content.querySelectorAll('.anim-fade-in-up');
+        nodes.forEach(node => {
+            node.style.animation = 'none';
+            requestAnimationFrame(() => { node.style.animation = ''; });
+        });
+        
+    } catch (e) {
+        console.error("AI Guide generation failed:", e);
+        showCustomAlert(`Failed to generate AI Eco-Guide:\n${e.message}`);
+        modal.classList.add('opacity-0');
+        box.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
     }
 }
 
-function initializeMap(lng, lat) {
-    if (mapInstance) {
-        mapInstance.remove();
-        mapInstance = null;
-    }
-    try {
-        mapboxgl.accessToken = mapboxToken;
-        mapInstance = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11',
-            center: [lng, lat],
-            zoom: 8,
-            attributionControl: false
-        });
-        mapInstance.addControl(new mapboxgl.NavigationControl(), 'top-right');
-        showToast('Map engine re-initialized!');
-    } catch (e) {
-        console.error(e);
-    }
-}
 
 // ================= GEOLOCATION ECO-PASS CHECKIN =================
 
@@ -1260,17 +1203,35 @@ async function deleteVibeReport(reportId) {
 }
 
 // Smart Search: Autosuggest rendering
-function showSuggestions(val, suggestBox, inputEl) {
-    const cleanVal = val.trim().toLowerCase();
+async function fetchRemoteSuggestions(query) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/search?query=${encodeURIComponent(query)}&limit=6`);
+        if (!response.ok) {
+            throw new Error('Search service unavailable');
+        }
+        const data = await response.json();
+        return data.results.map(result => result.name);
+    } catch (error) {
+        console.warn('Live search failed, falling back to local matches:', error);
+        return [];
+    }
+}
+
+async function showSuggestions(val, suggestBox, inputEl) {
+    const cleanVal = val.trim();
+    const normalized = cleanVal.toLowerCase();
     let matches = [];
 
-    if (cleanVal) {
-        // Prioritize exact prefix matches, then contains matches
-        const prefixMatches = SMART_SEARCH_DATABASE.filter(place => place.toLowerCase().startsWith(cleanVal));
-        const substringMatches = SMART_SEARCH_DATABASE.filter(place => !place.toLowerCase().startsWith(cleanVal) && place.toLowerCase().includes(cleanVal));
+    if (normalized) {
+        const prefixMatches = SMART_SEARCH_DATABASE.filter(place => place.toLowerCase().startsWith(normalized));
+        const substringMatches = SMART_SEARCH_DATABASE.filter(place => !place.toLowerCase().startsWith(normalized) && place.toLowerCase().includes(normalized));
         matches = [...new Set([...prefixMatches, ...substringMatches])];
+
+        if (normalized.length >= 3) {
+            const remoteMatches = await fetchRemoteSuggestions(cleanVal);
+            matches = [...new Set([...remoteMatches, ...matches])];
+        }
     } else {
-        // Show recent search shortcuts when input is empty
         matches = recentSearches.slice(0, 4);
     }
 

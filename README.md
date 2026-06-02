@@ -25,6 +25,13 @@ It leverages **FastAPI** for a lightweight async backend, **Gemini (gemini-1.5-f
 
 Follow these steps to run AltTravel locally on your machine.
 
+### 🔍 Smart Search Feature
+AltTravel includes a dedicated `Smart Search` experience in the main search flow.
+- The landing input is labeled `Smart Search` for clarity.
+- As users type, the app shows live autosuggest results from a curated destination library.
+- Keyboard navigation works with `ArrowUp`, `ArrowDown`, and `Enter` to select suggestions.
+- When the search field is empty, recently used searches appear as quick-access pills.
+
 ### 1. Backend Setup & Run
 
 The backend server runs on Python 3.10+.

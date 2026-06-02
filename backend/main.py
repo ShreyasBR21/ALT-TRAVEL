@@ -6,6 +6,7 @@ import logging
 import math
 import io
 import base64
+import httpx
 from PIL import Image
 from config import Settings
 
@@ -609,6 +610,15 @@ class SwapRequest(BaseModel):
     destination: str
     hour: Optional[int] = Field(12, ge=8, le=22, description="Optional hour for predictive crowd forecasting.")
 
+class SearchResult(BaseModel):
+    name: str
+    lat: str
+    lon: str
+
+class SearchResponse(BaseModel):
+    query: str
+    results: List[SearchResult]
+
 class AlternativeDetail(BaseModel):
     name: str
     coordinates: List[float]
@@ -668,6 +678,15 @@ class ItineraryResponse(BaseModel):
     balanced_footprint: str
     days: List[ItineraryDay]
     details: str
+
+class EcoGuideResponse(BaseModel):
+    alternative: str
+    morning_activity: str
+    afternoon_activity: str
+    evening_activity: str
+    eco_transit: str
+    local_eatery: str
+    sustainable_tip: str
 
 class VibeReportRequest(BaseModel):
     destination: str
@@ -917,6 +936,40 @@ def swap_destination_get(
 def swap_destination_post(payload: SwapRequest):
     return swap_destination_get(destination=payload.destination, hour=payload.hour or 12)
 
+@app.get("/api/search", response_model=SearchResponse)
+async def search_destinations(
+    query: str = Query(..., min_length=1, description="Search query for a destination or landmark."),
+    limit: int = Query(5, ge=1, le=10, description="Maximum number of results to return.")
+):
+    url = "https://nominatim.openstreetmap.org/search"
+    headers = {
+        "User-Agent": "AltTravel-SmartSearch/1.0 (contact: support@alttravel.example)"
+    }
+    params = {
+        "q": query,
+        "format": "json",
+        "limit": limit,
+        "addressdetails": 0,
+        "accept-language": "en"
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, params=params, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPError as err:
+        logger.error(f"Nominatim search failed: {err}")
+        raise HTTPException(status_code=503, detail="External search service unavailable.")
+
+    return SearchResponse(
+        query=query,
+        results=[
+            SearchResult(name=item.get("display_name", ""), lat=item.get("lat", ""), lon=item.get("lon", ""))
+            for item in data
+        ]
+    )
+
 @app.post("/api/analytics/log-redirection")
 def log_redirection(payload: Dict[str, str]):
     alternative_name = payload.get("alternative")
@@ -1108,6 +1161,159 @@ def get_analytics(token: str = Query(None, description="Admin verification token
         redirection_rate=redirection_rate,
         hotspots=ANALYTICS_DB["hotspots"],
         alternatives=ANALYTICS_DB["alternatives"]
+    )
+
+@app.get("/api/alternative/itinerary", response_model=EcoGuideResponse)
+def get_alternative_itinerary(alternative: str = Query(..., description="The name of the alternative destination")):
+    alt_clean = alternative.lower().strip()
+    
+    # Try using Gemini first if configured
+    if GEMINI_API_KEY:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = (
+                f"Generate a 1-day uncrowded, sustainable travel itinerary for the destination '{alternative}'.\n"
+                "It must share similar vibes to its congested counterpart.\n"
+                "Provide detailed, premium, and poetic descriptions for:\n"
+                "1. morning_activity (sunset/sunrise silent walk, photography, meditation, etc.)\n"
+                "2. afternoon_activity (uncrowded sightseeing, local organic lunch, self-guided tours, etc.)\n"
+                "3. evening_activity (peaceful sunset stroll, local crafts shopping, tranquil river views, etc.)\n"
+                "4. eco_transit (non-motorized or low-emission transport, e.g. Bicycles, rowboats, walking, e-rickshaws)\n"
+                "5. local_eatery (locally owned, organic, family run eateries supporting regional economy)\n"
+                "6. sustainable_tip (specific eco-tip like packaging waste back, choosing reef-safe sunscreens, carrying copper flasks)\n"
+                "Conform strictly to the JSON schema."
+            )
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(
+                    response_mime_type="application/json",
+                    response_schema=EcoGuideResponse
+                )
+            )
+            import json
+            data = json.loads(response.text)
+            return EcoGuideResponse(
+                alternative=alternative,
+                morning_activity=data.get("morning_activity", ""),
+                afternoon_activity=data.get("afternoon_activity", ""),
+                evening_activity=data.get("evening_activity", ""),
+                eco_transit=data.get("eco_transit", ""),
+                local_eatery=data.get("local_eatery", ""),
+                sustainable_tip=data.get("sustainable_tip", "")
+            )
+        except Exception as ex:
+            logger.error(f"Gemini Itinerary generation failed: {ex}. Falling back to pre-baked guides.")
+
+    # Local fallback pre-baked guides
+    fallbacks = {
+        "orchha": {
+            "morning": "Sunrise walk and silent photography at the Orchha Cenotaphs along the river.",
+            "afternoon": "Relaxed organic lunch at the local Orchha Organic Cafe, followed by a quiet exploration of the Jahangir Mahal courtyards.",
+            "evening": "Peaceful sunset viewing by the Betwa River ghats, enjoying silent water reflections.",
+            "transit": "Walkable town center or rent a local single-gear bicycle to minimize noise and emissions.",
+            "eatery": "Orchha Organic Cafe & Bundelkhand traditional local home-kitchen.",
+            "tip": "Carry a reusable water flask to avoid buying single-use plastic bottles around the monuments."
+        },
+        "mandu": {
+            "morning": "Sunrise stroll around the Jahaz Mahal (Ship Palace) amidst peaceful morning mist.",
+            "afternoon": "Self-guided walk through the silent arches of Hindola Mahal and Baz Bahadur's Palace ruins.",
+            "evening": "Scenic sunset reflection at the Rupmati Pavilion overlooking the peaceful Narmada valley.",
+            "transit": "Shared electric rickshaws or explore the expansive ruins on foot.",
+            "eatery": "Malwa local home-style kitchen serving hot Bafla Landoo and local spices.",
+            "tip": "Hire a locally certified guide to support the local historic preservation community directly."
+        },
+        "jibhi": {
+            "morning": "Pristine morning hike to the Jibhi waterfall surrounded by quiet pine woods.",
+            "afternoon": "Quiet reading session by the Tirthan river banks near the rustic log bridges.",
+            "evening": "Authentic stroll through the local slate-roofed villages of Chehni Kothar.",
+            "transit": "Walk the forest trails or share a low-emissions local eco-cab.",
+            "eatery": "Tirthan local organic homestay dining offering organic wood-fired trout and red rice.",
+            "tip": "Pack all plastic waste back with you to preserve the delicate alpine valley ecosystem."
+        },
+        "landour": {
+            "morning": "Sunrise forest stroll along the quiet Lal Tibba walking loop.",
+            "afternoon": "Scenic reading session at the historic Landour Bakehouse with snow-capped peak views.",
+            "evening": "Peaceful stroll through Sister's Bazaar as evening mist rolls in.",
+            "transit": "Walk the paved pedestrian forest lanes; motorized transit is restricted in the core cantonment zone.",
+            "eatery": "Landour Bakehouse & Char Dukan local tea stalls.",
+            "tip": "Do not play loud music; respect the tranquil silent zone regulations of the cantonment hill."
+        },
+        "gokarna": {
+            "morning": "Sunrise beach trail hike starting from Kudle beach to Half Moon beach.",
+            "afternoon": "Quiet organic lunch at a cliffside eco-cafe overlooking Om Beach.",
+            "evening": "Silent sunset viewing on the pristine, uncommercialized Paradise beach cove.",
+            "transit": "Walk the scenic cliff pathways; boats and cabs are only for essential transit.",
+            "eatery": "Prema Local Organic Restaurant & Om Beach cliff cafes.",
+            "tip": "Avoid throwing plastic wrap or bottles on the sand; participate in local voluntary beach cleanups."
+        },
+        "tarkarli": {
+            "morning": "Scenic sunrise boat ride to the offshore Sindhudurg sea fort ruins.",
+            "afternoon": "Uncrowded swimming and low-impact snorkeling at Devbagh beach spit.",
+            "evening": "Serene sunset walk along the quiet Karli river backwaters.",
+            "transit": "Walk the sandy lanes or hire local non-motorized rowboats.",
+            "eatery": "Authentic Malvani local home kitchen serving fresh Kokum Sherbet and Bhakri.",
+            "tip": "Respect coral reefs by avoiding touching them or using non-biodegradable chemical sunscreens."
+        },
+        "treviso": {
+            "morning": "Morning coffee along the quiet Buranelli canal walkways.",
+            "afternoon": "Tranquil stroll through Piazza dei Signori and medieval brick houses.",
+            "evening": "Aesthetic sunset glass of local prosecco at an uncrowded riverside osteria.",
+            "transit": "Walkable city center; clean, local electric buses.",
+            "eatery": "Osteria dalla Gigia (locally owned, traditional pasta).",
+            "tip": "Support local bakeries by trying authentic tiramisu where it was invented."
+        },
+        "chioggia": {
+            "morning": "Sunrise walk along the picturesque Vena Canal stone bridges.",
+            "afternoon": "Quiet visits to local fish markets and maritime museums.",
+            "evening": "Lagoon sunset views looking towards central Venice from a peaceful distance.",
+            "transit": "Local wooden rowing boats or bicycle rentals.",
+            "eatery": "Trattoria al Bersagliere (fresh, local lagoon seafood).",
+            "tip": "Respect local fishing crews by keeping docks clear during morning harbor operations."
+        },
+        "amed": {
+            "morning": "Sunrise outrigger boat ride looking back at Mount Agung.",
+            "afternoon": "Low-impact snorkeling directly off the quiet black sand beaches.",
+            "evening": "Quiet evening walk through seaside salt-farming villages.",
+            "transit": "Walk along the coastal road or rent a local bicycle.",
+            "eatery": "Warung Enak (traditional Balinese home cooking).",
+            "tip": "Do not touch the coral reefs; use mineral-based, reef-safe sunscreens."
+        },
+        "munduk": {
+            "morning": "Misty morning hike to the twin Munduk waterfalls.",
+            "afternoon": "Organic coffee tasting at a small family-run mountain plantation.",
+            "evening": "Tranquil sunset over the lush clove-scented green valleys.",
+            "transit": "Pedestrian trekking trails; explore by walking.",
+            "eatery": "Eco Cafe Munduk (organic mountain ingredients).",
+            "tip": "Carry a compost bag for organic waste during forest and plantation hikes."
+        }
+    }
+    
+    # Match the closest keyword in the alternative name
+    matched = None
+    for key, data in fallbacks.items():
+        if key in alt_clean:
+            matched = data
+            break
+            
+    if not matched:
+        # Generic default high-quality eco-guide
+        matched = {
+            "morning": f"Sunrise peaceful walk around the scenic paths of {alternative}, breathing fresh local air.",
+            "afternoon": "Aesthetic local organic lunch supporting family-run growers, followed by a self-guided nature or heritage walk.",
+            "evening": "Silent sunset viewing from an uncrowded local vantage point, respecting natural soundscapes.",
+            "transit": "Walk on foot or hire non-motorized vehicles (bicycles, rowing boats) to reduce carbon impact.",
+            "eatery": "Small family-owned dining spot serving traditional seasonal local delicacies.",
+            "tip": "Respect regional customs, avoid single-use plastics, and leave no trace behind."
+        }
+        
+    return EcoGuideResponse(
+        alternative=alternative,
+        morning_activity=matched["morning"],
+        afternoon_activity=matched["afternoon"],
+        evening_activity=matched["evening"],
+        eco_transit=matched["transit"],
+        local_eatery=matched["eatery"],
+        sustainable_tip=matched["tip"]
     )
 
 @app.get("/api/health")

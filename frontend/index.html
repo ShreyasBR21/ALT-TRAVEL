@@ -12,9 +12,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Mapbox GL JS -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     
     <script>
         tailwind.config = {
@@ -189,21 +186,6 @@
 
         .pulse-danger { animation: pulse-danger 2.2s infinite ease-in-out; }
 
-        /* ========== MAPBOX POPUP ========== */
-
-        .mapboxgl-popup-content {
-            background: #0d111c !important;
-            color: #f3f4f6 !important;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px !important;
-            padding: 14px !important;
-            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.6);
-        }
-        .mapboxgl-popup-tip {
-            border-top-color: #0d111c !important;
-            border-bottom-color: #0d111c !important;
-        }
-
         /* ========== RANGE SLIDER THUMB ========== */
 
         input[type="range"]::-webkit-slider-thumb {
@@ -321,11 +303,6 @@
                 <i class="fa-solid fa-chart-line"></i>
                 <span>B2B Board</span>
             </button>
-            <!-- Mapbox Key Config trigger -->
-            <button id="toggle-settings" class="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition flex items-center space-x-1.5 text-xs">
-                <i class="fa-solid fa-gears"></i>
-                <span>Token</span>
-            </button>
             <!-- Auth Login Button / User Profile -->
             <div id="auth-header-container" class="relative">
                 <button id="toggle-login" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-darkBg transition flex items-center space-x-1.5 text-xs font-bold shadow-lg shadow-emerald-950/20">
@@ -377,16 +354,18 @@
                 <!-- Searching Hub Card -->
                 <div class="anim-fade-in-up delay-2 glass-panel p-6 rounded-2xl glow-green border-white/10 max-w-xl mx-auto">
                     <form id="search-form" class="flex flex-col sm:flex-row items-center gap-3">
-                        <div class="relative w-full">
-                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                            <input 
-                                type="text" 
-                                id="destination-input"
-                                placeholder="Where are you planning to go? (e.g., Taj Mahal)" 
-                                class="w-full bg-slate-900/80 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition font-medium"
-                                required
-                                autocomplete="off"
-                            >
+                        <div class="w-full">
+                            <label for="destination-input" class="block mb-2 text-sm text-gray-400 font-semibold">Smart Search</label>
+                            <div class="relative w-full">
+                                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                                <input 
+                                    type="text" 
+                                    id="destination-input"
+                                    placeholder="Smart search: start typing a destination (e.g., Taj Mahal)"
+                                    class="w-full bg-slate-900/80 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition font-medium"
+                                    required
+                                    autocomplete="off"
+                                >
                             <!-- Smart Search: Landing autosuggest dropdown -->
                             <div id="landing-autosuggest" class="hidden absolute left-0 right-0 mt-2 bg-slate-950 border border-white/15 rounded-xl shadow-2xl p-2 z-50 text-left text-xs max-h-48 overflow-y-auto space-y-0.5 glass-panel"></div>
                         </div>
@@ -576,7 +555,7 @@
                 </div>
             </div>
 
-            <!-- Right Column: 2 Alternative Cards + Mapbox Canvas -->
+            <!-- Right Column: 2 Alternative Cards + Route Overview Canvas -->
             <div class="flex-1 flex flex-col h-full overflow-hidden relative">
                 
                 <!-- Alternatives Card Shelf (Top Half/Layer) -->
@@ -586,7 +565,7 @@
                             <span class="text-emerald-400"><i class="fa-solid fa-leaf"></i></span>
                             <span>Recommended Low-Crowd Swaps</span>
                         </h3>
-                        <span class="text-xs text-gray-400">Click a card to fly mapping viewport</span>
+                        <span class="text-xs text-gray-400">Click a card to preview route summary</span>
                     </div>
 
                     <!-- Cards Row -->
@@ -595,20 +574,27 @@
                     </div>
                 </div>
 
-                <!-- Map Container (Bottom Half/Layer) -->
+                <!-- Route Overview Container (Bottom Half/Layer) -->
                 <div class="flex-1 w-full relative">
-                    <div id="map" class="w-full h-full bg-slate-950"></div>
-                    
-                    <!-- Floating Map Legend overlay -->
-                    <div class="absolute bottom-4 left-4 bg-gray-900/90 border border-white/10 rounded-xl p-3 text-xs shadow-lg space-y-1.5 z-10">
-                        <div class="font-bold text-white mb-1">Map Legend</div>
-                        <div class="flex items-center space-x-2">
-                            <span class="h-3 w-3 rounded-full bg-rose-500 inline-block"></span>
-                            <span class="text-gray-300">Congested Hotspot</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="h-3 w-3 rounded-full bg-emerald-500 inline-block"></span>
-                            <span class="text-gray-300">Under-visited Alternatives</span>
+                    <div id="route-overview-panel" class="w-full h-full bg-slate-950 p-6">
+                        <div class="max-w-6xl mx-auto h-full flex flex-col gap-4">
+                            <div class="bg-slate-900/80 border border-white/10 rounded-3xl p-6 h-full flex flex-col lg:flex-row gap-4">
+                                <div class="lg:w-2/3 space-y-4">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p class="text-sm uppercase text-emerald-400 font-semibold tracking-[0.16em]">Route Overview</p>
+                                            <h4 class="mt-2 text-2xl font-bold text-white">Alternative route intelligence</h4>
+                                        </div>
+                                        <span class="uppercase text-xs text-gray-400 tracking-[0.2em] bg-white/5 px-3 py-1 rounded-full">Map-free UX</span>
+                                    </div>
+
+                                    <div id="route-tiles" class="grid gap-3 md:grid-cols-2"></div>
+                                </div>
+                                <div class="lg:w-1/3 bg-slate-950/90 border border-white/10 rounded-3xl p-5 shadow-xl">
+                                    <h5 class="text-white text-lg font-semibold mb-3">Quick route highlights</h5>
+                                    <ul id="route-summary-list" class="space-y-3 text-sm text-gray-300"></ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -618,49 +604,6 @@
         </section>
 
     </main>
-
-    <!-- ================= SETTINGS / MAP TOKEN MODAL ================= -->
-    <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-        <div class="bg-gray-900 border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 m-4 glass-panel">
-            <div class="flex items-center justify-between border-b border-white/10 pb-3">
-                <h3 class="font-outfit font-bold text-xl text-white flex items-center space-x-2">
-                    <i class="fa-solid fa-key text-emerald-400"></i>
-                    <span>Mapbox Access Token</span>
-                </h3>
-                <button id="close-settings" title="Close Settings" aria-label="Close Settings" class="text-gray-500 hover:text-white transition">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            
-            <p class="text-xs text-gray-400 leading-relaxed">
-                By default, AltTravel uses a public read-only Mapbox access token. Paste your personal Mapbox token below to load custom styles.
-            </p>
-
-            <div class="space-y-1">
-                <label for="mapbox-token-input" class="text-xs font-semibold text-gray-400">Mapbox Token String</label>
-                <input 
-                    type="password" 
-                    id="mapbox-token-input"
-                    class="w-full bg-slate-950 border border-white/10 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-                    placeholder="pk.eyJ1Ijo..."
-                >
-            </div>
-
-            <div class="flex items-center justify-between pt-2">
-                <button id="reset-token-btn" class="text-xs text-rose-400 hover:underline">
-                    Reset to Default
-                </button>
-                <div class="flex space-x-2">
-                    <button id="cancel-token-btn" class="px-4 py-2 text-xs font-semibold text-gray-400 hover:text-white transition">
-                        Cancel
-                    </button>
-                    <button id="save-token-btn" class="px-4 py-2 text-xs font-semibold bg-emerald-500 hover:bg-emerald-400 text-darkBg rounded-lg transition font-bold">
-                        Save Token
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- ================= ECO-PASS QR CODE MODAL ================= -->
     <div id="ecopass-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
@@ -847,6 +790,115 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- ================= AESTHETIC AI ECO-GUIDE MODAL ================= -->
+    <div id="ecoguide-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900/90 border border-white/15 rounded-3xl max-w-lg w-full p-6 space-y-5 m-4 glass-panel flex flex-col max-h-[92%] shadow-2xl glow-green transform scale-95 transition-transform duration-300" id="ecoguide-box">
+            
+            <div class="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+                <div class="flex items-center space-x-2.5">
+                    <div class="bg-gradient-to-tr from-emerald-400 to-teal-500 p-2 rounded-xl text-darkBg animate-pulse">
+                        <i class="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-outfit font-black text-xl text-white tracking-tight leading-none" id="ecoguide-title">AI Eco-Guide</h3>
+                        <p class="text-[9px] uppercase tracking-widest text-emerald-400 font-bold mt-1 leading-none" id="ecoguide-subtitle">1-Day Low-Crowd Sustainable Plan</p>
+                    </div>
+                </div>
+                <button id="close-ecoguide" title="Close Eco-Guide" aria-label="Close Eco-Guide" class="text-gray-500 hover:text-white transition p-2 rounded-lg bg-white/5 hover:bg-white/10">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Loader inside modal -->
+            <div id="ecoguide-loader" class="flex-1 flex flex-col items-center justify-center py-12 space-y-4">
+                <div class="relative w-16 h-16 flex items-center justify-center">
+                    <div class="ring-outer absolute inset-0 rounded-full border-2 border-transparent border-t-emerald-500"></div>
+                    <div class="ring-middle absolute inset-2 rounded-full border-2 border-transparent border-t-teal-400 reverse"></div>
+                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-400 text-lg animate-pulse relative z-10"></i>
+                </div>
+                <p class="text-xs text-gray-400 font-light max-w-xs text-center">Enforcing structured Gemini schemas, mapping sustainable route options, and gathering objective local eats...</p>
+            </div>
+
+            <!-- Content timeline container -->
+            <div id="ecoguide-content" class="flex-1 overflow-y-auto space-y-4 pr-1 hidden">
+                
+                <div class="relative border-l-2 border-emerald-500/20 ml-3 space-y-6 py-2">
+                    
+                    <!-- Morning Node -->
+                    <div class="relative pl-6 anim-fade-in-up delay-0">
+                        <span class="absolute -left-[9px] top-1 h-4.5 w-4.5 rounded-full bg-slate-900 border-2 border-emerald-400 flex items-center justify-center text-[8px] text-emerald-300 font-bold">1</span>
+                        <div class="glass-panel border border-white/5 bg-white/5 rounded-2xl p-4 space-y-1.5">
+                            <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"><i class="fa-solid fa-sun mr-1"></i> Morning Activity</span>
+                            <p class="text-xs text-gray-300 leading-relaxed font-medium" id="eg-morning"></p>
+                        </div>
+                    </div>
+
+                    <!-- Afternoon Node -->
+                    <div class="relative pl-6 anim-fade-in-up delay-1">
+                        <span class="absolute -left-[9px] top-1 h-4.5 w-4.5 rounded-full bg-slate-900 border-2 border-emerald-400 flex items-center justify-center text-[8px] text-emerald-300 font-bold">2</span>
+                        <div class="glass-panel border border-white/5 bg-white/5 rounded-2xl p-4 space-y-1.5">
+                            <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"><i class="fa-solid fa-cloud-sun mr-1"></i> Afternoon Activity</span>
+                            <p class="text-xs text-gray-300 leading-relaxed font-medium" id="eg-afternoon"></p>
+                        </div>
+                    </div>
+
+                    <!-- Evening Node -->
+                    <div class="relative pl-6 anim-fade-in-up delay-2">
+                        <span class="absolute -left-[9px] top-1 h-4.5 w-4.5 rounded-full bg-slate-900 border-2 border-emerald-400 flex items-center justify-center text-[8px] text-emerald-300 font-bold">3</span>
+                        <div class="glass-panel border border-white/5 bg-white/5 rounded-2xl p-4 space-y-1.5">
+                            <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest"><i class="fa-solid fa-moon mr-1"></i> Evening Activity</span>
+                            <p class="text-xs text-gray-300 leading-relaxed font-medium" id="eg-evening"></p>
+                        </div>
+                    </div>
+                    
+                </div>
+
+                <!-- Green Highlight Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+                    
+                    <!-- Eco Transit -->
+                    <div class="glass-panel border border-emerald-500/10 bg-emerald-950/5 rounded-2xl p-4 space-y-1.5 anim-fade-in-up delay-3">
+                        <div class="flex items-center space-x-1.5 text-emerald-400">
+                            <i class="fa-solid fa-bicycle text-xs"></i>
+                            <span class="text-[10px] uppercase font-bold tracking-wider">Eco-Friendly Transit</span>
+                        </div>
+                        <p class="text-[11px] text-gray-300 leading-relaxed" id="eg-transit"></p>
+                    </div>
+
+                    <!-- Local Eatery -->
+                    <div class="glass-panel border border-emerald-500/10 bg-emerald-950/5 rounded-2xl p-4 space-y-1.5 anim-fade-in-up delay-4">
+                        <div class="flex items-center space-x-1.5 text-emerald-400">
+                            <i class="fa-solid fa-utensils text-xs"></i>
+                            <span class="text-[10px] uppercase font-bold tracking-wider">Locally Owned Eat</span>
+                        </div>
+                        <p class="text-[11px] text-gray-300 leading-relaxed" id="eg-eatery"></p>
+                    </div>
+
+                </div>
+
+                <!-- Sustainable tip -->
+                <div class="glass-panel border border-emerald-400/20 bg-gradient-to-tr from-emerald-500/5 to-teal-500/5 rounded-2xl p-4 flex items-start space-x-3 anim-fade-in-up delay-5">
+                    <div class="h-8 w-8 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                        <i class="fa-solid fa-leaf"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <span class="text-[10px] uppercase font-bold tracking-wider text-emerald-400">Aesthetic Eco-Tip</span>
+                        <p class="text-xs text-gray-300 leading-relaxed" id="eg-tip"></p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="pt-2 border-t border-white/10 shrink-0 flex justify-end">
+                <button id="claim-guide-pass" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-darkBg rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-emerald-950/20">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Unlock Plan</span>
+                </button>
+            </div>
+            
+        </div>
     </div>
 
     <!-- ================= FIELD REPORT SUBMIT FORM MODAL ================= -->
