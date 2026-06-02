@@ -1,7 +1,7 @@
 import httpx
 import sys
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "http://127.0.0.1:8080"
 TIMEOUT = 15.0
 
 def test_search():

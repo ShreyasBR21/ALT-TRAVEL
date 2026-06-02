@@ -3,7 +3,7 @@
 // Backend URL - reads from localStorage, environment, or defaults to localhost
 let BACKEND_URL = localStorage.getItem('alt_travel_backend_url') ||
                   (typeof process !== 'undefined' && process.env.REACT_APP_BACKEND_URL) ||
-                  (window.location.hostname === 'localhost' ? 'http://127.0.0.1:8000' : 'https://alt-travel.onrender.com');
+                  (window.location.hostname === 'localhost' ? 'http://127.0.0.1:8080' : 'https://alt-travel.onrender.com');
 
 // Global variables
 let currentAlternatives = [];
