@@ -121,6 +121,407 @@ HOTSPOTS_DB: Dict[str, Dict[str, Any]] = {
                 "highlight": "Sindhudurg sea fort boat ride, coral reef diving, and serene houseboats."
             }
         ]
+    },
+    "santorini": {
+        "name": "Santorini, Greece",
+        "coordinates": [25.4335, 36.3932],
+        "crowd_index": 97,
+        "description": "The famous Santorini caldera draws massive cruise crowds, crowded cliffside villages, and high summer prices that overshadow its volcanic sunsets.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Milos, Greece",
+                "coordinates": [24.4431, 36.7255],
+                "crowd_index": 32,
+                "similarity": 91,
+                "description": "A volcanic island with dramatic lunar landscapes, quiet fishing harbors, and lesser-known white-sand coves.",
+                "highlight": "Secluded beaches, lunar rock formations, and authentic island villages."
+            },
+            {
+                "name": "Naxos, Greece",
+                "coordinates": [25.3774, 37.1050],
+                "crowd_index": 38,
+                "similarity": 87,
+                "description": "A spacious Cycladic island offering long sandy beaches, traditional mountain villages, and local farm-to-table cuisine.",
+                "highlight": "Wide beaches, inland olive groves, and authentic Greek village life."
+            }
+        ]
+    },
+    "venice": {
+        "name": "Venice, Italy",
+        "coordinates": [12.3155, 45.4408],
+        "crowd_index": 96,
+        "description": "Venice suffers from overwhelming canal crowds, cruise ship day-trippers, and flooded pedestrian routes that strain its fragile lagoon heritage.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Treviso, Italy",
+                "coordinates": [12.2416, 45.6666],
+                "crowd_index": 33,
+                "similarity": 88,
+                "description": "A charming canal town with medieval squares, quiet riverside cafés, and a gentle Venetian ambiance without the tourist crush.",
+                "highlight": "Canal-side dining, historic walls, and relaxed local life."
+            },
+            {
+                "name": "Chioggia, Italy",
+                "coordinates": [12.2603, 45.2140],
+                "crowd_index": 36,
+                "similarity": 84,
+                "description": "A fishing town on the southern Venetian lagoon with colorful canals, market culture, and fewer crowds than central Venice.",
+                "highlight": "Local fish markets, peaceful lagoon views, and authentic lagoon town vistas."
+            }
+        ]
+    },
+    "kuta": {
+        "name": "Kuta, Bali",
+        "coordinates": [115.1691, -8.7186],
+        "crowd_index": 95,
+        "description": "Kuta attracts heavy surf tourism, neon nightlife, and crowded beachfront promenades, diluting Bali's quieter cultural charm.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Amed, Bali",
+                "coordinates": [115.5743, -8.3432],
+                "crowd_index": 29,
+                "similarity": 86,
+                "description": "A peaceful east Bali village known for black sand snorkeling sites, slow coastal pace, and traditional fishing culture.",
+                "highlight": "Scuba reefs, beachfront bungalows, and sunrise boat tours."
+            },
+            {
+                "name": "Munduk, Bali",
+                "coordinates": [115.1029, -8.3187],
+                "crowd_index": 35,
+                "similarity": 82,
+                "description": "A misty mountain hamlet with coffee farms, waterfalls, and tranquil rice terraces away from Bali's tourist beaches.",
+                "highlight": "Hidden waterfalls, mountain coffee trails, and cool tropical forest walks."
+            }
+        ]
+    },
+    "machupicchu": {
+        "name": "Machu Picchu, Peru",
+        "coordinates": [-72.5449, -13.1631],
+        "crowd_index": 93,
+        "description": "Machu Picchu attracts massive daily visitors on the Inca Trail, creating long lines and pressure on the ancient ruins.",
+        "danger_level": "Severe",
+        "alternatives": [
+            {
+                "name": "Choquequirao, Peru",
+                "coordinates": [-72.7150, -13.3470],
+                "crowd_index": 24,
+                "similarity": 90,
+                "description": "A remote Inca ruin high in the Andes, offering similar stone terraces and historic mystique with far fewer trekkers.",
+                "highlight": "Off-the-beaten-path ruins, high-altitude trekking, and quiet heritage sites."
+            },
+            {
+                "name": "Huchuy Qosqo, Peru",
+                "coordinates": [-72.3967, -13.3773],
+                "crowd_index": 28,
+                "similarity": 86,
+                "description": "A small Inca archaeological site above the Sacred Valley, delivering sweeping mountain views and fewer crowds.",
+                "highlight": "Ancient terraces, panoramic valley views, and intimate archaeological discovery."
+            }
+        ]
+    },
+    "eiffel": {
+        "name": "Eiffel Tower, Paris",
+        "coordinates": [2.2945, 48.8584],
+        "crowd_index": 95,
+        "description": "The Eiffel Tower draws enormous tourist lines, busy Champs-Élysées crowds, and long waits for iconic photo spots.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Udaipur, Rajasthan",
+                "coordinates": [73.7125, 26.9124],
+                "crowd_index": 38,
+                "similarity": 90,
+                "description": "The lake city offers romantic palace views, historic gardens, and sunset boat rides with a calmer heritage atmosphere.",
+                "highlight": "City Palace, Lake Pichola sunset cruises, and palace-lit evening promenades."
+            },
+            {
+                "name": "Mysore Palace, Karnataka",
+                "coordinates": [76.6394, 12.3051],
+                "crowd_index": 33,
+                "similarity": 86,
+                "description": "A regal palace in a less congested city, known for its illuminated domes, ornate halls, and quieter courtly charm.",
+                "highlight": "Evening palace illumination, royal art halls, and calm ceremonial spaces."
+            }
+        ]
+    },
+    "greatwall": {
+        "name": "Great Wall at Badaling, China",
+        "coordinates": [116.0200, 40.3620],
+        "crowd_index": 94,
+        "description": "Badaling is the most visited section of the Great Wall, with dense tourist groups and limited walking space along restored battlements.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Kumbhalgarh Fort, Rajasthan",
+                "coordinates": [73.5715, 25.1530],
+                "crowd_index": 29,
+                "similarity": 88,
+                "description": "A vast hill fort with sprawling walls and quiet mountain views, offering a dramatic historic walk away from the busiest crowds.",
+                "highlight": "Long fort walls, peaceful sunset vistas, and immersive Rajput fort ambience."
+            },
+            {
+                "name": "Chittorgarh Fort, Rajasthan",
+                "coordinates": [74.6292, 24.8891],
+                "crowd_index": 31,
+                "similarity": 85,
+                "description": "An ancient fortress with large ramparts, temples, and panoramic hilltop views, visited by fewer travelers than major landmark sections.",
+                "highlight": "Rampart walks, historic palace ruins, and quiet cultural heritage discovery."
+            }
+        ]
+    },
+    "shibuya": {
+        "name": "Shibuya Crossing, Tokyo",
+        "coordinates": [139.7010, 35.6595],
+        "crowd_index": 96,
+        "description": "Shibuya Crossing is famed for its neon crowds and constant pedestrian surges, making it an exhilarating but overwhelming city landmark.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Chandni Chowk, Delhi",
+                "coordinates": [77.2300, 28.6562],
+                "crowd_index": 37,
+                "similarity": 89,
+                "description": "A lively heritage bazaar with narrow lanes, bright signage, and busy street energy, but far less global tourist saturation.",
+                "highlight": "Street food alleys, historic market lanes, and authentic local bustle."
+            },
+            {
+                "name": "Colaba Causeway, Mumbai",
+                "coordinates": [72.8290, 18.9150],
+                "crowd_index": 34,
+                "similarity": 85,
+                "description": "A busy downtown promenade with cafés, street vendors, and colorful commercial energy that still feels local and manageable.",
+                "highlight": "Seaside shopping stretch, art galleries, and relaxed evening market vibes."
+            }
+        ]
+    },
+    "timessquare": {
+        "name": "Times Square, New York",
+        "coordinates": [-73.9855, 40.7580],
+        "crowd_index": 97,
+        "description": "Times Square is a nonstop hub of bright billboards, dense pedestrian flow, and queued attractions, making it a high-pressure city hotspot.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Marine Drive, Mumbai",
+                "coordinates": [72.8220, 18.9481],
+                "crowd_index": 35,
+                "similarity": 87,
+                "description": "A famous seaside promenade with city lights, evening walkers, and a more relaxed coastal city rhythm than a global urban core.",
+                "highlight": "Nighttime skyline, ocean breeze walks, and iconic Mumbai boulevard energy."
+            },
+            {
+                "name": "Connaught Place, Delhi",
+                "coordinates": [77.2195, 28.6315],
+                "crowd_index": 33,
+                "similarity": 84,
+                "description": "A historic circular commercial district with cafes, shops, and city buzz that feels spacious compared to more crowded world hubs.",
+                "highlight": "Colonial arcades, relaxed café culture, and accessible urban shopping."
+            }
+        ]
+    }
+    ,
+    "petra": {
+        "name": "Petra, Jordan",
+        "coordinates": [35.4444, 30.3285],
+        "crowd_index": 85,
+        "description": "The rose-red city carved into cliffs draws long guided tours and concentrated visitor flows in narrow canyon approaches.",
+        "danger_level": "Severe",
+        "alternatives": [
+            {
+                "name": "Hampi, Karnataka",
+                "coordinates": [76.4600, 15.3350],
+                "crowd_index": 36,
+                "similarity": 88,
+                "description": "Ancient temple ruins set across dramatic boulder-strewn landscapes, offering a quieter archaeological experience.",
+                "highlight": "Vast temple complexes, sunrise vistas across boulder fields, and calm rural surroundings."
+            },
+            {
+                "name": "Pench National Park, Madhya Pradesh",
+                "coordinates": [79.4275, 21.9899],
+                "crowd_index": 29,
+                "similarity": 82,
+                "description": "Dense natural preserves and wildlife corridors that provide dramatic nature experiences without heavy historical-site crowds.",
+                "highlight": "Wildlife safaris, quiet forest trails, and immersive nature-focused visits."
+            }
+        ]
+    },
+    "angkor": {
+        "name": "Angkor Wat, Cambodia",
+        "coordinates": [103.8667, 13.4125],
+        "crowd_index": 94,
+        "description": "Angkor's temple complex receives massive sunrise crowds and large tour groups that compress visitor routes.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Pondicherry, Tamil Nadu",
+                "coordinates": [79.8083, 11.9416],
+                "crowd_index": 34,
+                "similarity": 86,
+                "description": "Colonial-era architecture, quiet promenade life and cultural depth that feel restorative compared to busy temple circuits.",
+                "highlight": "Promenade beach, French Quarter walks, and calm cultural cafés."
+            },
+            {
+                "name": "Darjeeling, West Bengal",
+                "coordinates": [88.2627, 27.0360],
+                "crowd_index": 31,
+                "similarity": 80,
+                "description": "Hill-station vistas, tea gardens, and dispersed scenic viewpoints offering breathers away from packed heritage sites.",
+                "highlight": "Tea garden tours, mountain viewpoints, and relaxed colonial hill-town charm."
+            }
+        ]
+    },
+    "banff": {
+        "name": "Banff National Park, Canada",
+        "coordinates": [-115.5729, 51.1784],
+        "crowd_index": 82,
+        "description": "Popular alpine lakes and trails see peak-season bottlenecks and crowded lakeshores at marquee viewpoints.",
+        "danger_level": "Severe",
+        "alternatives": [
+            {
+                "name": "Valley of Flowers, Uttarakhand",
+                "coordinates": [79.6044, 30.7485],
+                "crowd_index": 28,
+                "similarity": 84,
+                "description": "High-altitude alpine meadows with seasonal blooms and quieter trekking routes compared to crowded lakeside lookouts.",
+                "highlight": "Alpine floral displays, remote trekking, and serene high-mountain landscapes."
+            },
+            {
+                "name": "Pangong Tso (off-peak), Ladakh",
+                "coordinates": [78.7945, 33.8273],
+                "crowd_index": 39,
+                "similarity": 79,
+                "description": "High-altitude lakes with dramatic color shifts that can be enjoyed with fewer crowds outside peak transit windows.",
+                "highlight": "Azure lake colors, high-desert panoramas, and quiet lakeside camps."
+            }
+        ]
+    },
+    "cinqueterre": {
+        "name": "Cinque Terre, Italy",
+        "coordinates": [9.7055, 44.1279],
+        "crowd_index": 90,
+        "description": "Colorful cliffside villages along a narrow coastal trail attract heavy day-tripper flows and congested footpaths.",
+        "danger_level": "Severe",
+        "alternatives": [
+            {
+                "name": "Kovalam, Kerala",
+                "coordinates": [76.9486, 8.3626],
+                "crowd_index": 35,
+                "similarity": 85,
+                "description": "Scenic coastal villages with charming beaches and a slower seaside rhythm compared to busy cliffside trails.",
+                "highlight": "Palm-fringed beaches, lighthouse viewpoints, and relaxed coastal life."
+            },
+            {
+                "name": "Gokarna, Karnataka",
+                "coordinates": [74.3188, 14.5479],
+                "crowd_index": 30,
+                "similarity": 81,
+                "description": "Undiscovered coves and relaxed beach trails that feel intimate and less trafficked than major coastal circuits.",
+                "highlight": "Remote beach trails, quiet coves, and barefoot seaside village life."
+            }
+        ]
+    },
+    "borabora": {
+        "name": "Bora Bora, French Polynesia",
+        "coordinates": [-151.7415, -16.5004],
+        "crowd_index": 78,
+        "description": "Overwater bungalows and lagoon tours concentrate visitors in small resort zones during high season.",
+        "danger_level": "Moderate",
+        "alternatives": [
+            {
+                "name": "Andaman Islands (Havelock), India",
+                "coordinates": [93.0000, 11.9600],
+                "crowd_index": 42,
+                "similarity": 86,
+                "description": "Crystal-clear waters, coral snorkel sites and quiet island beaches that echo tropical lagoon charm.",
+                "highlight": "Coral snorkeling, tranquil beaches, and simple island stays."
+            },
+            {
+                "name": "Lakshadweep (Agatti), India",
+                "coordinates": [72.7810, 10.8260],
+                "crowd_index": 38,
+                "similarity": 82,
+                "description": "Remote coral atolls with strong marine life and low-volume tourism compared to high-end island resorts.",
+                "highlight": "Clear lagoons, marine biodiversity, and low-key island life."
+            }
+        ]
+    },
+    "giza": {
+        "name": "Pyramids of Giza, Egypt",
+        "coordinates": [31.1342, 29.9792],
+        "crowd_index": 95,
+        "description": "Large day-tour volumes and concentrated visitor activity around pyramid sites put pressure on access routes.",
+        "danger_level": "Critical",
+        "alternatives": [
+            {
+                "name": "Kumbhalgarh Fort, Rajasthan",
+                "coordinates": [73.5715, 25.1530],
+                "crowd_index": 29,
+                "similarity": 88,
+                "description": "Expansive fortifications and historical ramparts that provide immersive fortress walks away from top global heritage crowds.",
+                "highlight": "Long fort walls, panoramic hilltop views, and quiet heritage exploration."
+            },
+            {
+                "name": "Chittorgarh Fort, Rajasthan",
+                "coordinates": [74.6292, 24.8891],
+                "crowd_index": 31,
+                "similarity": 85,
+                "description": "Ancient fortress complex with large ramparts and historic monuments that feel spacious compared to crowded pyramid circuits.",
+                "highlight": "Rampart walks, sprawling courtyards, and reflective heritage sites."
+            }
+        ]
+    },
+    "sagrada": {
+        "name": "Sagrada Familia, Barcelona",
+        "coordinates": [2.1744, 41.4036],
+        "crowd_index": 92,
+        "description": "Antoni Gaudí's masterpiece sees heavy queues, audio-tour clusters, and limited interior flow during peak periods.",
+        "danger_level": "Severe",
+        "alternatives": [
+            {
+                "name": "Pondicherry, Tamil Nadu",
+                "coordinates": [79.8083, 11.9416],
+                "crowd_index": 34,
+                "similarity": 84,
+                "description": "Quieter colonial architecture and chapel-lined promenades with contemplative public spaces and fewer tour groups.",
+                "highlight": "Quiet churches, colonial streets, and seaside promenades."
+            },
+            {
+                "name": "Mysore Palace, Karnataka",
+                "coordinates": [76.6394, 12.3051],
+                "crowd_index": 33,
+                "similarity": 81,
+                "description": "Ornate royal architecture with scheduled light shows and cultural programming that disperse visitors across time slots.",
+                "highlight": "Evening palace illumination and calm royal halls."
+            }
+        ]
+    },
+    "halong": {
+        "name": "Ha Long Bay, Vietnam",
+        "coordinates": [107.0840, 20.9101],
+        "crowd_index": 88,
+        "description": "Karst island cruises concentrate tourist flows on common route segments and popular grotto stops.",
+        "danger_level": "Severe",
+        "alternatives": [
+            {
+                "name": "Andaman Islands (Havelock), India",
+                "coordinates": [93.0000, 11.9600],
+                "crowd_index": 42,
+                "similarity": 83,
+                "description": "Tropical archipelago experiences with quiet lagoon explorations that feel less tour-concentrated.",
+                "highlight": "Diving, clear lagoons, and low-volume island experiences."
+            },
+            {
+                "name": "Lakshadweep (Agatti), India",
+                "coordinates": [72.7810, 10.8260],
+                "crowd_index": 38,
+                "similarity": 80,
+                "description": "Remote atolls with strong marine life and calm coastal waters, good for off-grid snorkeling and quieter stays.",
+                "highlight": "Pristine marine life and serene atoll beaches."
+            }
+        ]
     }
 }
 
@@ -149,7 +550,15 @@ ANALYTICS_DB = {
     "hotspots": {
         "tajmahal": 182,
         "manali": 140,
-        "goa": 160
+        "goa": 160,
+        "santorini": 78,
+        "venice": 65,
+        "kuta": 84,
+        "machupicchu": 42,
+        "eiffel": 0,
+        "greatwall": 0,
+        "shibuya": 0,
+        "timessquare": 0
     },
     "alternatives": {
         "Orchha, Madhya Pradesh": 45,
@@ -157,7 +566,23 @@ ANALYTICS_DB = {
         "Jibhi, Himachal Pradesh": 38,
         "Landour, Uttarakhand": 17,
         "Gokarna, Karnataka": 15,
-        "Tarkarli, Maharashtra": 11
+        "Tarkarli, Maharashtra": 11,
+        "Milos, Greece": 0,
+        "Naxos, Greece": 0,
+        "Treviso, Italy": 0,
+        "Chioggia, Italy": 0,
+        "Amed, Bali": 0,
+        "Munduk, Bali": 0,
+        "Choquequirao, Peru": 0,
+        "Huchuy Qosqo, Peru": 0,
+        "Udaipur, Rajasthan": 0,
+        "Mysore Palace, Karnataka": 0,
+        "Kumbhalgarh Fort, Rajasthan": 0,
+        "Chittorgarh Fort, Rajasthan": 0,
+        "Chandni Chowk, Delhi": 0,
+        "Colaba Causeway, Mumbai": 0,
+        "Marine Drive, Mumbai": 0,
+        "Connaught Place, Delhi": 0
     }
 }
 
@@ -274,7 +699,23 @@ def local_heuristic_analysis(destination: str) -> dict:
     alternatives_list = [
         "Orchha, Madhya Pradesh", "Mandu, Madhya Pradesh",
         "Jibhi, Himachal Pradesh", "Landour, Uttarakhand",
-        "Gokarna, Karnataka", "Tarkarli, Maharashtra"
+        "Gokarna, Karnataka", "Tarkarli, Maharashtra",
+        "Milos, Greece", "Naxos, Greece",
+        "Treviso, Italy", "Chioggia, Italy",
+        "Amed, Bali", "Munduk, Bali",
+        "Choquequirao, Peru", "Huchuy Qosqo, Peru",
+        "Udaipur, Rajasthan", "Mysore Palace, Karnataka",
+        "Kumbhalgarh Fort, Rajasthan", "Chittorgarh Fort, Rajasthan",
+        "Chandni Chowk, Delhi", "Colaba Causeway, Mumbai",
+        "Marine Drive, Mumbai", "Connaught Place, Delhi"
+    ]
+    # Extend with newly added global hotspots mapped to Indian alternatives
+    alternatives_list += [
+        "Hampi, Karnataka", "Pench National Park, Madhya Pradesh",
+        "Pondicherry, Tamil Nadu", "Darjeeling, West Bengal",
+        "Valley of Flowers, Uttarakhand", "Pangong Tso, Ladakh",
+        "Kovalam, Kerala", "Andaman Islands (Havelock)", "Lakshadweep (Agatti)",
+        "Kumbhalgarh Fort, Rajasthan", "Chittorgarh Fort, Rajasthan"
     ]
     for alt in alternatives_list:
         if alt.split(",")[0].lower().strip() in dest_lower:
@@ -285,12 +726,49 @@ def local_heuristic_analysis(destination: str) -> dict:
         hotspot_key = "tajmahal"
     elif any(k in dest_lower for k in ["goa", "beach", "coastal", "sea", "ocean", "gokarna", "tarkarli", "coastline", "sunsets"]):
         hotspot_key = "goa"
+    elif any(k in dest_lower for k in ["santorini", "greece", "caldera", "oia", "fira", "cyclades"]):
+        hotspot_key = "santorini"
+    elif any(k in dest_lower for k in ["venice", "venezia", "canal", "rialto", "st." , "marko", "san marco"]):
+        hotspot_key = "venice"
+    elif any(k in dest_lower for k in ["kuta", "bali", "semniyak", "legian", "ubud", "indonesia"]):
+        hotspot_key = "kuta"
+    elif any(k in dest_lower for k in ["machu", "picchu", "peru", "cusco", "inca"]):
+        hotspot_key = "machupicchu"
+    elif any(k in dest_lower for k in ["eiffel", "paris", "louvre", "seine", "champ de mars", "arc de triomphe"]):
+        hotspot_key = "eiffel"
+    elif any(k in dest_lower for k in ["great wall", "badaling", "mutianyu", "beijing", "china"]):
+        hotspot_key = "greatwall"
+    elif any(k in dest_lower for k in ["shibuya", "tokyo", "neon", "crossing", "harajuku"]):
+        hotspot_key = "shibuya"
+    elif any(k in dest_lower for k in ["times square", "new york", "manhattan", "broadway", "midtown"]):
+        hotspot_key = "timessquare"
     else:
         hotspot_key = "manali"
 
     h = HOTSPOTS_DB[hotspot_key]
+    vibe_traits = {
+        "tajmahal": ["Mughal Heritage", "Monumental Grandeur"],
+        "goa": ["Beach Culture", "Coastal Nightlife"],
+        "santorini": ["Caldera Sunsets", "Whitewashed Charm"],
+        "venice": ["Canals", "Historic Romance"],
+        "kuta": ["Surf Culture", "Tropical Energy"],
+        "machupicchu": ["Ancient Ruins", "Mountain Mystique"],
+        "eiffel": ["Iconic Landmarks", "Romantic Cityscape"],
+        "greatwall": ["Historic Grandeur", "Ancient Fortifications"],
+        "shibuya": ["Neon Urban Pulse", "Crowded City Energy"],
+        "timessquare": ["Electric Street Life", "High-Energy Urban Theater"],
+        "petra": ["Ancient Carved Architecture", "Canyon Approaches"],
+        "angkor": ["Temple Grandeur", "Sunrise Rituals"],
+        "banff": ["Alpine Lakes", "Glacial Peaks"],
+        "cinqueterre": ["Cliffside Villages", "Coastal Trails"],
+        "borabora": ["Tropical Lagoons", "Resort Serenity"],
+        "giza": ["Ancient Monuments", "Desert Plateau"],
+        "sagrada": ["Gaudí Complexity", "Ornate Facades"],
+        "halong": ["Karst Islands", "Cruise Routes"],
+        "manali": ["Culture", "Scenic Vistas", "Heritage"]
+    }
     return {
-        "aesthetic_traits": ["Culture", "Scenic Vistas", "Heritage"] if hotspot_key == "manali" else ["Mughal Heritage"] if hotspot_key == "tajmahal" else ["White Sand Beaches"],
+        "aesthetic_traits": vibe_traits.get(hotspot_key, ["Scenic", "Cultural"]),
         "vibe_description": h["description"],
         "hotspot": {
             "name": h["name"],
@@ -329,7 +807,7 @@ def run_gemini_analysis(destination: str) -> dict:
         prompt = (
             f"Analyze the travel destination or query: '{destination}'.\\n"
             "Identify its core aesthetic qualities and vibe.\\n"
-            "Identify the most similar overcrowded Indian hotspot trap related to this query (e.g. Manali, Goa, Taj Mahal, Mysore Palace, etc.) and generate its details.\\n"
+            "Identify the most similar overcrowded Indian hotspot trap related to this query (e.g. Manali, Goa, Taj Mahal, Mysore Palace, Santorini, Venice, Eiffel Tower, Times Square, etc.) and generate its details.\\n"
             "Generate exactly two lesser-known, under-visited alternative destinations in India that share a similar vibe to the hotspot.\\n"
             "If the query directly names an alternative, put its name in 'direct_alternative_match' and provide two other alternatives.\\n"
             "Conform strictly to the JSON schema."
@@ -647,7 +1125,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "main:app",
-        host=APP_HOST,
-        port=APP_PORT,
-        reload=DEBUG_MODE,
+        host=settings.host,
+        port=settings.port,
+        reload=settings.debug,
     )
