@@ -80,6 +80,10 @@ The backend server runs on Python 3.10+.
 
    The backend server will launch on `http://127.0.0.1:8000`. You can inspect the interactive API documentation at `http://127.0.0.1:8000/docs`.
 
+## Continuous Integration
+
+A GitHub Actions workflow has been added in `.github/workflows/python-ci.yml` to validate backend Python syntax on pushes and pull requests to `main`.
+
 ---
 
 ### 2. Frontend Setup & Run
