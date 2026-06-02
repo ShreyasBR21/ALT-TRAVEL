@@ -157,12 +157,30 @@ ANALYTICS_DB = {
     }
 }
 
+# Mock User Database for Role-Based Login
+USERS_DB = {
+    "traveler@alt.travel": {"password": "pass", "role": "Traveler", "name": "Aarav Sharma"},
+    "admin@alt.travel": {"password": "admin", "role": "Admin", "name": "Priya Patel"}
+}
+
 # ================= SCHEMAS =================
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class LoginResponse(BaseModel):
+    success: bool
+    token: str
+    role: str
+    name: str
+    message: str
 
 class GeminiAestheticAnalysis(BaseModel):
     aesthetic_traits: List[str] = Field(description="A list of 3-5 core aesthetic traits of the queried location (e.g., heritage monuments, snow mountains, alpine valleys, beaches, coastal).")
     vibe_description: str = Field(description="A short, descriptive, poetic summary of the destination's unique atmosphere (1-2 sentences).")
     suggested_hotspot: str = Field(description="The closest matching crowded hotspot key from the following selection only: 'tajmahal', 'manali', 'goa'. Make the best logical association.")
+    direct_alternative_match: str = Field(description="If the query directly names or requests one of the alternatives: 'Orchha, Madhya Pradesh', 'Mandu, Madhya Pradesh', 'Jibhi, Himachal Pradesh', 'Landour, Uttarakhand', 'Gokarna, Karnataka', 'Tarkarli, Maharashtra', specify the exact full alternative name here. Otherwise return an empty string.")
 
 class SwapRequest(BaseModel):
     destination: str
@@ -187,6 +205,7 @@ class GeminiMeta(BaseModel):
     aesthetic_traits: List[str]
     vibe_description: str
     is_mock: bool
+    direct_alternative_match: Optional[str] = None
 
 class SwapResponse(BaseModel):
     success: bool
@@ -246,29 +265,47 @@ def predict_crowd_index(base_index: int, hour: int) -> int:
 
 def local_heuristic_analysis(destination: str) -> dict:
     dest_lower = destination.lower()
+    
+    # Smart Search: Check for direct alternative substring matches
+    direct_alt = None
+    alternatives_list = [
+        "Orchha, Madhya Pradesh", "Mandu, Madhya Pradesh",
+        "Jibhi, Himachal Pradesh", "Landour, Uttarakhand",
+        "Gokarna, Karnataka", "Tarkarli, Maharashtra"
+    ]
+    for alt in alternatives_list:
+        alt_base = alt.split(",")[0].lower().strip()
+        if alt_base in dest_lower:
+            direct_alt = alt
+            break
+
     if any(k in dest_lower for k in ["taj", "mahal", "agra", "historic", "architecture", "monument", "orchha", "mandu", "palace", "tomb"]):
         return {
             "aesthetic_traits": ["Mughal Heritage", "Palaces", "Intricate Carvings", "Historic Forts", "Royal Cenotaphs"],
             "vibe_description": "Vibrant and majestic heritage monuments boasting historical palaces, imposing stone fortification walls, and royal riverside cenotaphs.",
-            "suggested_hotspot": "tajmahal"
+            "suggested_hotspot": "tajmahal",
+            "direct_alternative_match": direct_alt
         }
     elif any(k in dest_lower for k in ["manali", "shimla", "mountain", "snow", "hill", "jibhi", "landour", "pine", "valley", "trek"]):
         return {
             "aesthetic_traits": ["Alpine Valleys", "Cedar Forests", "Snow-capped Peaks", "Quiet Streams", "Wooden Cottages"],
             "vibe_description": "Serene and alpine hill stations composed of rushing snowmelt streams, thick pine forests, and rustic Himalayan wooden architectures.",
-            "suggested_hotspot": "manali"
+            "suggested_hotspot": "manali",
+            "direct_alternative_match": direct_alt
         }
     elif any(k in dest_lower for k in ["goa", "beach", "coastal", "sea", "ocean", "gokarna", "tarkarli", "coastline", "sunsets"]):
         return {
             "aesthetic_traits": ["White Sand Beaches", "Coastal Trails", "Sunset Views", "Offshore Sea Forts", "Laidback Vibe"],
             "vibe_description": "Relaxing and breezy coastal shores displaying pristine crescent beaches, rugged cliff hikes, and ancient seaside stone fortresses.",
-            "suggested_hotspot": "goa"
+            "suggested_hotspot": "goa",
+            "direct_alternative_match": direct_alt
         }
     else:
         return {
             "aesthetic_traits": ["Culture", "Scenic Vistas", "Heritage"],
             "vibe_description": f"A historic and culturally rich destination offering iconic architectural styles, local heritage, and scenic lookouts.",
-            "suggested_hotspot": "manali"
+            "suggested_hotspot": "manali",
+            "direct_alternative_match": direct_alt
         }
 
 def run_gemini_analysis(destination: str) -> dict:
@@ -299,7 +336,14 @@ def run_gemini_analysis(destination: str) -> dict:
             "Identify its core aesthetic qualities and map it to the most similar overcrowded Indian hotspot "
             "from: 'tajmahal' (for historical heritage monuments/tombs/palaces), 'manali' (for snow mountains/hill stations/pine forests/valleys), "
             "or 'goa' (for beaches/coastal views/sea/laidback vibe).\n"
-            "Return the structured data strictly conforming to the requested schema."
+            "Also, if the query directly names or requests one of these alternatives:\n"
+            "- 'Orchha, Madhya Pradesh'\n"
+            "- 'Mandu, Madhya Pradesh'\n"
+            "- 'Jibhi, Himachal Pradesh'\n"
+            "- 'Landour, Uttarakhand'\n"
+            "- 'Gokarna, Karnataka'\n"
+            "- 'Tarkarli, Maharashtra'\n"
+            "Identify it in the 'direct_alternative_match' property. Conform strictly to the schema."
         )
         
         response = model.generate_content(
@@ -321,7 +365,8 @@ def run_gemini_analysis(destination: str) -> dict:
             "aesthetic_traits": data.get("aesthetic_traits", ["Scenic", "Cultural"]),
             "vibe_description": data.get("vibe_description", "An appealing vacation spot with unique local charms."),
             "suggested_hotspot": suggested,
-            "is_mock": False
+            "is_mock": False,
+            "direct_alternative_match": data.get("direct_alternative_match") if data.get("direct_alternative_match") else None
         }
         
     except Exception as ex:
@@ -401,7 +446,8 @@ def swap_destination_get(
         analysis=GeminiMeta(
             aesthetic_traits=analysis_res["aesthetic_traits"],
             vibe_description=analysis_res["vibe_description"],
-            is_mock=analysis_res["is_mock"]
+            is_mock=analysis_res["is_mock"],
+            direct_alternative_match=analysis_res.get("direct_alternative_match")
         )
     )
 
@@ -540,10 +586,54 @@ def list_vibe_reports(destination: Optional[str] = None):
         return [r for r in FIELD_REPORTS if destination.lower() in r["destination"].lower()]
     return FIELD_REPORTS
 
+# Auth token validation helper
+def get_user_from_token(token: Optional[str]) -> Optional[dict]:
+    if not token or not token.startswith("ALTTRAVEL-SESSION-"):
+        return None
+    parts = token.split("-")
+    if len(parts) < 4:
+        return None
+    role = parts[2]
+    email = parts[3]
+    user = USERS_DB.get(email)
+    if user and user["role"].upper() == role:
+        return user
+    return None
+
+@app.post("/api/auth/login", response_model=LoginResponse)
+def auth_login(payload: LoginRequest):
+    email_clean = payload.email.lower().strip()
+    user = USERS_DB.get(email_clean)
+    if not user or user["password"] != payload.password:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    token = f"ALTTRAVEL-SESSION-{user['role'].upper()}-{email_clean}"
+    return LoginResponse(
+        success=True,
+        token=token,
+        role=user["role"],
+        name=user["name"],
+        message="Login successful."
+    )
+
+@app.delete("/api/vibe/moderate/{report_id}")
+def moderate_vibe_report(report_id: int, token: Optional[str] = Query(None)):
+    user = get_user_from_token(token)
+    if not user or user["role"] != "Admin":
+        raise HTTPException(status_code=401, detail="Unauthorized. Admin rights required.")
+    
+    global FIELD_REPORTS
+    initial_len = len(FIELD_REPORTS)
+    FIELD_REPORTS = [r for r in FIELD_REPORTS if r["id"] != report_id]
+    if len(FIELD_REPORTS) == initial_len:
+        raise HTTPException(status_code=404, detail="Report not found.")
+    return {"success": True, "message": f"Report {report_id} deleted successfully."}
+
 @app.get("/api/analytics", response_model=AnalyticsResponse)
-def get_analytics(token: str = Query(None, description="Admin verification token")):
-    # Secure endpoint check
-    if token != "alt-travel-admin-pass-2026":
+def get_analytics(token: str = Query(None, description="Admin verification token/session")):
+    # Secure endpoint check supporting both old static pass and role-based session token
+    user = get_user_from_token(token)
+    is_admin = user and user["role"] == "Admin"
+    if not is_admin and token != "alt-travel-admin-pass-2026":
         raise HTTPException(status_code=401, detail="Unauthorized dashboard access token.")
         
     total_diverted = sum(ANALYTICS_DB["alternatives"].values())

@@ -107,13 +107,52 @@ const elements = {
     
     // Toast notification
     toast: document.getElementById('toast'),
-    toastMessage: document.getElementById('toast-message')
+    toastMessage: document.getElementById('toast-message'),
+
+    // Auth & Login
+    authHeaderContainer: document.getElementById('auth-header-container'),
+    toggleLogin: document.getElementById('toggle-login'),
+    loginModal: document.getElementById('login-modal'),
+    closeLogin: document.getElementById('close-login'),
+    loginForm: document.getElementById('login-form'),
+    loginEmail: document.getElementById('login-email'),
+    loginPassword: document.getElementById('login-password'),
+    userProfileMenu: document.getElementById('user-profile-menu'),
+    menuUserName: document.getElementById('menu-user-name'),
+    menuUserRole: document.getElementById('menu-user-role'),
+    logoutBtn: document.getElementById('logout-btn'),
+
+    // Smart Search
+    landingAutosuggest: document.getElementById('landing-autosuggest'),
+    resultsAutosuggest: document.getElementById('results-autosuggest'),
+    recentSearchesContainer: document.getElementById('recent-searches-container'),
+    recentSearchesList: document.getElementById('recent-searches-list')
 };
+
+// Auth State Global
+let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+// Recent Searches Global
+let recentSearches = JSON.parse(localStorage.getItem('recentSearches')) || [];
+
+// Smart Search database
+const SMART_SEARCH_DATABASE = [
+    "Taj Mahal, Agra",
+    "Manali, Himachal Pradesh",
+    "Goa (North Beaches), India",
+    "Orchha, Madhya Pradesh",
+    "Mandu, Madhya Pradesh",
+    "Jibhi, Himachal Pradesh",
+    "Landour, Uttarakhand",
+    "Gokarna, Karnataka",
+    "Tarkarli, Maharashtra"
+];
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     elements.mapboxTokenInput.value = mapboxToken === DEFAULT_MAPBOX_TOKEN ? '' : mapboxToken;
+    updateAuthUI();
+    renderRecentSearches();
 });
 
 function setupEventListeners() {
@@ -124,6 +163,7 @@ function setupEventListeners() {
         if (query) {
             searchQuery = query;
             handleSearch(query, currentHour);
+            addRecentSearch(query);
         }
     });
 
@@ -133,7 +173,109 @@ function setupEventListeners() {
             if (query) {
                 searchQuery = query;
                 handleSearch(query, currentHour);
+                addRecentSearch(query);
             }
+        }
+    });
+
+    // Login Modal controls
+    elements.toggleLogin.addEventListener('click', () => {
+        if (currentUser) {
+            elements.userProfileMenu.classList.toggle('hidden');
+        } else {
+            elements.loginModal.classList.remove('hidden');
+        }
+    });
+
+    elements.closeLogin.addEventListener('click', () => {
+        elements.loginModal.classList.add('hidden');
+    });
+
+    // Handle login form submission
+    elements.loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = elements.loginEmail.value.trim();
+        const password = elements.loginPassword.value.trim();
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || "Authentication failed");
+            }
+
+            const data = await response.json();
+            currentUser = {
+                token: data.token,
+                role: data.role,
+                name: data.name
+            };
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            showToast(`Welcome back, ${data.name}!`);
+            elements.loginModal.classList.add('hidden');
+            elements.loginEmail.value = '';
+            elements.loginPassword.value = '';
+            updateAuthUI();
+            
+            // Refresh results screen if active
+            if (currentHotspot) {
+                fetchAndRenderReports(currentHotspot.name);
+            }
+        } catch (error) {
+            alert(`Login Failed: ${error.message}`);
+        }
+    });
+
+    // Logout trigger
+    elements.logoutBtn.addEventListener('click', () => {
+        currentUser = null;
+        localStorage.removeItem('currentUser');
+        elements.userProfileMenu.classList.add('hidden');
+        showToast("Logged out successfully.");
+        updateAuthUI();
+        if (currentHotspot) {
+            fetchAndRenderReports(currentHotspot.name);
+        }
+    });
+
+    // Dismiss profile menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (elements.userProfileMenu && !elements.userProfileMenu.classList.contains('hidden')) {
+            if (!elements.authHeaderContainer.contains(e.target)) {
+                elements.userProfileMenu.classList.add('hidden');
+            }
+        }
+    });
+
+    // Smart Search: Autosuggest events
+    elements.destinationInput.addEventListener('input', (e) => {
+        showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
+    });
+
+    elements.destinationInput.addEventListener('focus', (e) => {
+        showSuggestions(e.target.value, elements.landingAutosuggest, elements.destinationInput);
+    });
+
+    elements.resultsSearchInput.addEventListener('input', (e) => {
+        showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
+    });
+
+    elements.resultsSearchInput.addEventListener('focus', (e) => {
+        showSuggestions(e.target.value, elements.resultsAutosuggest, elements.resultsSearchInput);
+    });
+
+    // Close autosuggest lists when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!elements.destinationInput.contains(e.target) && !elements.landingAutosuggest.contains(e.target)) {
+            elements.landingAutosuggest.classList.add('hidden');
+        }
+        if (!elements.resultsSearchInput.contains(e.target) && !elements.resultsAutosuggest.contains(e.target)) {
+            elements.resultsAutosuggest.classList.add('hidden');
         }
     });
 
@@ -233,7 +375,12 @@ function setupEventListeners() {
 
     // B2B Dashboard triggers
     elements.toggleAnalytics.addEventListener('click', () => {
-        elements.analyticsPanel.classList.remove('translate-x-full');
+        if (currentUser && currentUser.role === 'Admin') {
+            unlockB2BDashboardWithToken(currentUser.token);
+        } else {
+            // Show passcode entry as guest backup
+            elements.analyticsPanel.classList.remove('translate-x-full');
+        }
     });
     
     elements.closeAnalyticsPanelAuth.addEventListener('click', () => {
@@ -255,6 +402,11 @@ function setupEventListeners() {
 
     // Field reports modal
     elements.openReportForm.addEventListener('click', () => {
+        if (!currentUser) {
+            alert("Please Sign In as a Traveler to submit a field report.");
+            elements.loginModal.classList.remove('hidden');
+            return;
+        }
         // Populate select list with hotspot and alternatives options
         if (currentHotspot && currentAlternatives) {
             elements.reportDestSelect.innerHTML = `
@@ -436,6 +588,38 @@ function renderResults(payload) {
 
     // 6. Initialize Map
     initializeMapAndPins(hotspot, alternatives);
+
+    // Smart Search: If direct alternative match is found, automatically fly to it and open popup
+    if (payload.analysis && payload.analysis.direct_alternative_match) {
+        const matchedAlt = alternatives.find(a => a.name.toLowerCase().trim() === payload.analysis.direct_alternative_match.toLowerCase().trim());
+        if (matchedAlt && mapInstance) {
+            setTimeout(() => {
+                mapInstance.flyTo({
+                    center: matchedAlt.coordinates,
+                    zoom: 11,
+                    essential: true,
+                    duration: 2000
+                });
+                
+                // Track redirection metrics
+                fetch(`${BACKEND_URL}/api/analytics/log-redirection`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ alternative: matchedAlt.name })
+                }).catch(err => console.error("Analytics log error:", err));
+
+                mapMarkers.forEach(m => {
+                    const markerLngLat = m.getLngLat();
+                    if (Math.abs(markerLngLat.lng - matchedAlt.coordinates[0]) < 0.0001 &&
+                        Math.abs(markerLngLat.lat - matchedAlt.coordinates[1]) < 0.0001) {
+                        m.togglePopup();
+                    }
+                });
+                
+                showToast(`Focused on alternative: ${matchedAlt.name}`);
+            }, 1000);
+        }
+    }
 }
 
 function initializeMapAndPins(hotspot, alternatives) {
@@ -734,13 +918,24 @@ async function fetchAndRenderReports(destinationName) {
             <div class="bg-white/5 border border-white/5 rounded-xl p-4 space-y-2 text-xs">
                 <div class="flex items-center justify-between">
                     <span class="font-bold text-white">${escapeHTML(rep.destination)}</span>
-                    <span class="px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider ${
-                        rep.congestion_rating === 'Quiet' 
-                            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
-                            : (rep.congestion_rating === 'Moderate' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' : 'bg-rose-500/10 border border-rose-500/20 text-rose-400')
-                    }">
-                        ${rep.congestion_rating}
-                    </span>
+                    <div class="flex items-center space-x-1.5 font-bold">
+                        <span class="px-2 py-0.5 rounded font-extrabold text-[9px] uppercase tracking-wider ${
+                            rep.congestion_rating === 'Quiet' 
+                                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
+                                : (rep.congestion_rating === 'Moderate' ? 'bg-amber-500/10 border border-amber-500/20 text-amber-400' : 'bg-rose-500/10 border border-rose-500/20 text-rose-400')
+                        }">
+                            ${rep.congestion_rating}
+                        </span>
+                        ${currentUser && currentUser.role === 'Admin' ? `
+                            <button 
+                                class="moderate-delete-btn text-rose-400 hover:text-rose-300 transition text-[10px] p-1 font-extrabold"
+                                data-id="${rep.id}"
+                                title="Delete Vibe Report"
+                            >
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 </div>
                 <p class="text-gray-300 font-light leading-relaxed">${escapeHTML(rep.report_text)}</p>
                 ${rep.image_data ? `
@@ -754,6 +949,18 @@ async function fetchAndRenderReports(destinationName) {
                 ` : ''}
             </div>
         `).join('');
+
+        // Attach click handlers to delete buttons for Admin moderation
+        const deleteBtns = elements.reportsFeedContainer.querySelectorAll('.moderate-delete-btn');
+        deleteBtns.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const reportId = btn.getAttribute('data-id');
+                if (confirm(`Admin Moderation: Delete report #${reportId}?`)) {
+                    await deleteVibeReport(reportId);
+                }
+            });
+        });
 
     } catch (e) {
         console.error("Vibe list fetch failure:", e);
@@ -884,6 +1091,192 @@ async function unlockB2BDashboard() {
         console.error(e);
         alert(`B2B Authentication failed: ${e.message}\nEnsure the passcode is correct.`);
     }
+}
+
+// Auth UI State Renderer
+function updateAuthUI() {
+    if (currentUser) {
+        elements.toggleLogin.innerHTML = `
+            <i class="fa-solid fa-circle-user"></i>
+            <span>Profile</span>
+        `;
+        elements.menuUserName.textContent = currentUser.name;
+        elements.menuUserRole.textContent = currentUser.role;
+    } else {
+        elements.toggleLogin.innerHTML = `
+            <i class="fa-solid fa-right-to-bracket"></i>
+            <span>Sign In</span>
+        `;
+    }
+}
+
+// B2B Dashboard Unlock using user session token directly
+async function unlockB2BDashboardWithToken(token) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/analytics?token=${encodeURIComponent(token)}`);
+        if (!response.ok) {
+            throw new Error(`Unauthorized (code ${response.status})`);
+        }
+
+        const data = await response.json();
+        
+        // Render stats
+        elements.statRedirects.textContent = data.total_redirections;
+        elements.statRate.textContent = `${data.redirection_rate}%`;
+        elements.statClaims.textContent = `${data.eco_passes_verified} check-ins`;
+
+        // Render Hotspots chart
+        elements.analyticsHotspotsBars.innerHTML = Object.entries(data.hotspots).map(([hKey, count]) => {
+            const maxVal = Math.max(...Object.values(data.hotspots), 1);
+            const percentage = (count / maxVal) * 100;
+            const label = hKey === 'tajmahal' ? 'Taj Mahal' : (hKey === 'manali' ? 'Manali' : (hKey === 'goa' ? 'Goa' : hKey));
+            return `
+                <div class="space-y-1 text-xs">
+                    <div class="flex justify-between font-semibold text-gray-300">
+                        <span>${label} search requests</span>
+                        <span>${count}</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-1.5">
+                        <div class="bg-rose-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Render Alternatives chart
+        elements.analyticsAlternativesBars.innerHTML = Object.entries(data.alternatives).map(([altName, count]) => {
+            const maxVal = Math.max(...Object.values(data.alternatives), 1);
+            const percentage = (count / maxVal) * 100;
+            return `
+                <div class="space-y-1 text-xs">
+                    <div class="flex justify-between font-semibold text-gray-300">
+                        <span>${escapeHTML(altName)}</span>
+                        <span class="text-emerald-400 font-bold">${count} visits</span>
+                    </div>
+                    <div class="w-full bg-slate-900 rounded-full h-1.5">
+                        <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        elements.analyticsAuth.classList.add('hidden');
+        elements.analyticsDashboard.classList.remove('hidden');
+        elements.analyticsPanel.classList.remove('translate-x-full');
+        showToast("B2B Deflection Board opened successfully!");
+
+    } catch (e) {
+        console.error(e);
+        // Fallback to passcode auth screen
+        elements.analyticsDashboard.classList.add('hidden');
+        elements.analyticsAuth.classList.remove('hidden');
+        elements.analyticsPanel.classList.remove('translate-x-full');
+    }
+}
+
+// Moderate Delete API Call
+async function deleteVibeReport(reportId) {
+    if (!currentUser || currentUser.role !== 'Admin') return;
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/vibe/moderate/${reportId}?token=${currentUser.token}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Moderation delete failed");
+        }
+
+        showToast("Field Report deleted by Admin.");
+        if (currentHotspot) {
+            fetchAndRenderReports(currentHotspot.name);
+        }
+    } catch (error) {
+        alert(`Moderation Error: ${error.message}`);
+    }
+}
+
+// Smart Search: Autosuggest rendering
+function showSuggestions(val, suggestBox, inputEl) {
+    const cleanVal = val.trim().toLowerCase();
+    if (!cleanVal) {
+        suggestBox.classList.add('hidden');
+        return;
+    }
+
+    const matches = SMART_SEARCH_DATABASE.filter(place => 
+        place.toLowerCase().includes(cleanVal)
+    );
+
+    if (matches.length === 0) {
+        suggestBox.classList.add('hidden');
+        return;
+    }
+
+    suggestBox.innerHTML = matches.map(place => `
+        <button class="w-full text-left px-2.5 py-1.5 rounded-lg text-white hover:bg-emerald-500/10 hover:text-emerald-300 transition truncate border border-transparent hover:border-emerald-500/20 font-medium">
+            <i class="fa-solid fa-location-dot text-emerald-400 mr-1.5"></i>${escapeHTML(place)}
+        </button>
+    `).join('');
+
+    suggestBox.classList.remove('hidden');
+
+    // Attach click triggers to suggestions
+    const btns = suggestBox.querySelectorAll('button');
+    btns.forEach((btn, idx) => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const selected = matches[idx];
+            inputEl.value = selected;
+            suggestBox.classList.add('hidden');
+            searchQuery = selected;
+            handleSearch(selected, currentHour);
+            addRecentSearch(selected);
+        });
+    });
+}
+
+// Smart Search: Recent searches logic
+function addRecentSearch(query) {
+    const cleanQuery = query.trim();
+    if (!cleanQuery) return;
+
+    // Remove duplicates
+    recentSearches = recentSearches.filter(q => q.toLowerCase() !== cleanQuery.toLowerCase());
+    recentSearches.unshift(cleanQuery);
+    
+    // Limit to 4 items
+    recentSearches = recentSearches.slice(0, 4);
+    
+    localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+    renderRecentSearches();
+}
+
+function renderRecentSearches() {
+    if (recentSearches.length === 0) {
+        elements.recentSearchesContainer.classList.add('hidden');
+        return;
+    }
+
+    elements.recentSearchesList.innerHTML = recentSearches.map(q => `
+        <button class="recent-search-pill px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 hover:border-emerald-500/40 hover:bg-emerald-500/5 hover:text-emerald-300 transition text-[10px] font-semibold flex items-center gap-1 shrink-0 max-w-[120px] truncate">
+            <span class="truncate">${escapeHTML(q)}</span>
+        </button>
+    `).join('');
+
+    elements.recentSearchesContainer.classList.remove('hidden');
+
+    // Attach click events
+    const pills = elements.recentSearchesList.querySelectorAll('.recent-search-pill');
+    pills.forEach((pill, idx) => {
+        pill.addEventListener('click', () => {
+            const q = recentSearches[idx];
+            elements.destinationInput.value = q;
+            searchQuery = q;
+            handleSearch(q, currentHour);
+            addRecentSearch(q);
+        });
+    });
 }
 
 // Simple HTML escaping helper
